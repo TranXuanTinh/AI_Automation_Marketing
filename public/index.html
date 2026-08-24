@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Behold AI-First Content System | Yiya (RCC)</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo-circle">B</div>
+        <div>
+          <h2>BEHOLD</h2>
+          <span class="subtext">Design Studio & Counselling</span>
+        </div>
+      </div>
+
+      <nav class="nav-links">
+        <button class="nav-item active" data-tab="overview">
+          <span class="icon">📊</span> Pipeline Overview
+        </button>
+        <button class="nav-item" data-tab="ranked-topics">
+          <span class="icon">🎯</span> Ranked Topics (Stage 2)
+        </button>
+        <button class="nav-item" data-tab="review-gate">
+          <span class="icon">🛡️</span> Human Approval Gate
+        </button>
+        <button class="nav-item" data-tab="source-library">
+          <span class="icon">📚</span> Verified Source Library
+        </button>
+        <button class="nav-item" data-tab="log-faq">
+          <span class="icon">✍️</span> Log Client FAQ
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <span class="status-dot"></span>
+          <span>Yiya (RCC) • Clinical Gate</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <header class="top-header">
+        <div>
+          <h1 id="page-title">From Listening to Meaningful Connection</h1>
+          <p class="tagline">Human-led AI automation for clinical research, publishing & continuous learning.</p>
+        </div>
+        <div class="header-badges">
+          <span class="badge badge-gold">Safety: No Hallucinations</span>
+          <span class="badge badge-green">Human Review Required</span>
+        </div>
+      </header>
+
+      <!-- TAB 1: OVERVIEW -->
+      <section id="tab-overview" class="tab-pane active">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Captured Demand Signals</span>
+            <span class="stat-value" id="stat-signals">0</span>
+            <span class="stat-note">Google PAA, Reddit, YouTube</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Topic Candidates</span>
+            <span class="stat-value" id="stat-candidates">0</span>
+            <span class="stat-note">Grouped & Deduplicated</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Scored Topics (25-Pt)</span>
+            <span class="stat-value" id="stat-scored">0</span>
+            <span class="stat-note">Evaluated on Behold Fit</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Verified Research Sources</span>
+            <span class="stat-value" id="stat-sources">0</span>
+            <span class="stat-note">Real DOIs / Peer-reviewed</span>
+          </div>
+        </div>
+
+        <div class="pipeline-diagram">
+          <h3>4-Stage Automated Pipeline</h3>
+          <div class="stages-flow">
+            <div class="stage-step">
+              <span class="step-num">1</span>
+              <h4>Listen for Audience</h4>
+              <p>Google PAA, Reddit, YouTube & Client FAQs</p>
+            </div>
+            <div class="arrow">→</div>
+            <div class="stage-step">
+              <span class="step-num">2</span>
+              <h4>AI Researches + Creates</h4>
+              <p>25-pt Matrix, Evidence Mapping & Clinical Drafting</p>
+            </div>
+            <div class="arrow">→</div>
+            <div class="stage-step highlight">
+              <span class="step-num">3</span>
+              <h4>Human Gate & Publish</h4>
+              <p>Yiya Reviews, Social Briefs & Multi-Ecosystem</p>
+            </div>
+            <div class="arrow">→</div>
+            <div class="stage-step">
+              <span class="step-num">4</span>
+              <h4>Monitor & Improve</h4>
+              <p>1, 7, 30-Day Audits & Continuous Learning</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: RANKED TOPICS -->
+      <section id="tab-ranked-topics" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <h3>Ranked Content Opportunities (Stage 2 Output)</h3>
+            <span class="subtle">Sorted by 25-Point Behold Matrix</span>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Working Title</th>
+                  <th>Audience Relevance</th>
+                  <th>Visible Demand</th>
+                  <th>Behold Fit</th>
+                  <th>Client Usefulness</th>
+                  <th>Distinctive Angle</th>
+                  <th>Total Score</th>
+                  <th>Priority Tier</th>
+                </tr>
+              </thead>
+              <tbody id="topics-table-body">
+                <tr><td colspan="9" class="loading-state">Loading topics...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: HUMAN REVIEW GATE -->
+      <section id="tab-review-gate" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <h3>Drafts Pending Yiya's Review</h3>
+            <span class="badge badge-gold">Human Approval Gate</span>
+          </div>
+          <div id="drafts-container" class="drafts-list">
+            <p class="loading-state">Loading drafts...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: SOURCE LIBRARY -->
+      <section id="tab-source-library" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <h3>Verified Clinical & Academic Evidence Map</h3>
+            <span class="badge badge-green">100% Real DOIs & ISBNs</span>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Authors</th>
+                  <th>Title & Publication</th>
+                  <th>Year</th>
+                  <th>Identifier (DOI/ISBN)</th>
+                  <th>Clinical Takeaway</th>
+                </tr>
+              </thead>
+              <tbody id="sources-table-body">
+                <tr><td colspan="6" class="loading-state">Loading verified sources...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: LOG CLIENT FAQ -->
+      <section id="tab-log-faq" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <h3>Log Anonymized Client FAQ (Stage 1 Input)</h3>
+            <span class="subtle">Directly informs future demand signals</span>
+          </div>
+          <form id="faq-form" class="form-grid">
+            <div class="form-group full-width">
+              <label for="faq-question">Client Question or Expressed Dilemma</label>
+              <input type="text" id="faq-question" placeholder="e.g. Why do I feel like shutting down whenever my partner asks for a talk?" required>
+            </div>
+            <div class="form-group">
+              <label for="faq-cluster">Topic Cluster</label>
+              <select id="faq-cluster" required>
+                <option value="trauma_recovery">Trauma Recovery & Nervous System</option>
+                <option value="emotional_numbness">Emotional Numbness & Dissociation</option>
+                <option value="anxiety_overwhelm">High-Functioning Anxiety</option>
+                <option value="grief_loss">Grief & Ambiguous Loss</option>
+                <option value="ifs_parts">IFS & Inner Critic</option>
+                <option value="resentment_forgiveness">Resentment & Boundaries</option>
+                <option value="faith_spiritual">Faith & Spiritual Dryness</option>
+                <option value="adhd_neurodivergent">ADHD & Executive Function</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="faq-frequency">Frequency</label>
+              <select id="faq-frequency">
+                <option value="frequent">Frequent (Multiple clients ask this)</option>
+                <option value="occasional" selected>Occasional</option>
+                <option value="rare">Rare / Specific niche</option>
+              </select>
+            </div>
+            <div class="form-group full-width">
+              <label for="faq-notes">Clinical Notes / Context</label>
+              <textarea id="faq-notes" rows="3" placeholder="Context or bodily patterns noticed..."></textarea>
+            </div>
+            <div class="form-group full-width">
+              <button type="submit" class="btn btn-primary">Save Demand Signal</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "behold-content-system",
+  "version": "1.0.0",
+  "description": "Behold AI-First Content System: From listening to meaningful connection",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "listen": "node src/cli/run-listeners.js",
+    "research": "node src/cli/run-research.js",
+    "seed": "node src/cli/seed-data.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "better-sqlite3": "^11.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {},
+  "author": "Behold Design Studio",
+  "license": "UNLICENSED",
+  "private": true
+}
