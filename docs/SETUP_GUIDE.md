@@ -11,6 +11,7 @@ This guide provides complete instructions on configuring environment variables, 
 - **Node.js**: `v18.0.0` or higher
 - **NPM**: `v9.0.0` or higher
 - **Disk Space**: ~100MB (SQLite database creates locally in `./data/behold.db`)
+- **CRW Web Scraper** *(optional)*: For real-time web scraping (self-hosted or cloud)
 
 ### Obtaining Your Gemini API Key
 1. Go to [Google AI Studio](https://aistudio.google.com/).
@@ -46,10 +47,35 @@ GEMINI_API_KEY=AIzaSy...your_gemini_api_key_here
 # Optional (for enhanced live YouTube searches):
 YOUTUBE_API_KEY=
 
+# Optional: CRW Web Scraper (recommended for real web scraping)
+# Self-hosted: curl -fsSL https://fastcrw.com/install | sh
+CRW_BASE_URL=http://localhost:3000
+CRW_API_KEY=
+
 # Server Settings:
 PORT=3000
 NODE_ENV=development
 ```
+
+### Step 4: Install CRW Web Scraper (Optional but Recommended)
+
+CRW enables real web scraping instead of AI-simulated data:
+
+```bash
+# One-command install (macOS & Linux)
+curl -fsSL https://fastcrw.com/install | sh
+
+# Start CRW server (runs on http://localhost:3000 by default)
+crw
+```
+
+> **Note:** If your Behold server also uses port 3000, either change the Behold `PORT` in `.env` to `3001`, or start CRW on a different port with `crw --port 3002` and set `CRW_BASE_URL=http://localhost:3002` in `.env`.
+
+For cloud API (no binary to install):
+1. Register at [fastcrw.com/register](https://fastcrw.com/register) (1000 free credits)
+2. Set `CRW_API_KEY=crw_live_your_key` and `CRW_BASE_URL=https://api.fastcrw.com` in `.env`
+
+See the full [CRW Integration Guide](CRW_INTEGRATION.md) for detailed documentation.
 
 ---
 
@@ -143,3 +169,7 @@ crontab -e
 | `Cannot find module '@google/genai'` | Dependencies not installed | Run `npm install` to download all packages. |
 | `better-sqlite3 compilation error` | Missing C++ build tools on host OS | Install standard build tools: `sudo apt-get install build-essential python3` (Linux). |
 | `Port 3000 already in use` | Another process is using port 3000 | Set `PORT=3001` in `.env` or kill the running process. |
+| `CRW server is not reachable` | CRW binary not running | Start with `crw` command, or check `CRW_BASE_URL` in `.env`. |
+| `CRW not configured` | Missing CRW env vars | Add `CRW_BASE_URL=http://localhost:3000` to `.env`. |
+| `CRW configured but not reachable` | CRW server offline or wrong URL | Verify with `curl http://localhost:3000/health`. Start CRW: `crw`. |
+| Listeners still use Gemini mode | CRW health check fails | Ensure CRW is running and `CRW_BASE_URL` points to correct port. |

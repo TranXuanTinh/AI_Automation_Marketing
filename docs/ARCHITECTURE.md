@@ -11,10 +11,17 @@ The system follows a **Human-in-the-Loop (HITL) Event-Driven Pipeline** divided 
 
 ```mermaid
 graph TD
+    subgraph CRW_LAYER["CRW Web Scraper (Self-hosted / Cloud)"]
+        CRW_S["/v1/search"]
+        CRW_SC["/v1/scrape"]
+        CRW_CR["/v1/crawl"]
+        CRW_M["/v1/map"]
+    end
+
     subgraph STAGE_1["Stage 1: Audience Listening Engine"]
-        L1["Google PAA Scraper"] --> SIG[("demand_signals\n(Raw Table)")]
-        L2["Reddit JSON Scanner"] --> SIG
-        L3["YouTube API Scanner"] --> SIG
+        L1["Google PAA Scanner\n(CRW search + Gemini fallback)"] --> SIG[("demand_signals\n(Raw Table)")]
+        L2["Reddit JSON Scanner\n(CRW enrichment)"] --> SIG
+        L3["YouTube Scanner\n(CRW + YT API + Gemini)"] --> SIG
         L4["Yiya FAQ Dashboard Form"] --> SIG
     end
 
@@ -23,7 +30,7 @@ graph TD
         TC --> CAND[("topic_candidates")]
         CAND --> TS["Topic Scorer\n(25-Point Matrix)"]
         TS --> SCORED[("scored_topics")]
-        SCORED --> EM["Evidence Mapper\n(PubMed / DOI Resolver)"]
+        SCORED --> EM["Evidence Mapper\n(CRW verification + Gemini)"]
         EM --> SRC[("sources &\nevidence_maps")]
         SCORED --> CD["Content Drafter\n(Psychoeducation & FAQ)"]
         SRC --> CD
@@ -49,6 +56,13 @@ graph TD
         LOG -. Feedback .-> TC
     end
 
+    CRW_S --> L1
+    CRW_S --> L3
+    CRW_SC --> L2
+    CRW_S --> EM
+    CRW_SC --> EM
+
+    style CRW_LAYER fill:#1a1a2e,stroke:#e94560,color:#eaeaea
     style STAGE_1 fill:#15221e,stroke:#c4a35a,color:#f3efe6
     style STAGE_2 fill:#15221e,stroke:#c4a35a,color:#f3efe6
     style STAGE_3 fill:#15221e,stroke:#c4a35a,color:#f3efe6
@@ -62,13 +76,23 @@ graph TD
 ### Stage 1: Listen for Audience
 *Objective: Discover unvarnished client questions across search and community forums without guessing or relying on inflated search volumes.*
 
+0. **CRW Web Scraper Layer (`src/crawlers/crw-client.js`)**
+   - REST API wrapper for [CRW (fastCRW)](https://github.com/us/crw) web scraper.
+   - Provides `scrape()`, `search()`, `crawl()`, and `map()` methods for real web data acquisition.
+   - Auto-detects availability: when CRW is running, all listeners use real web scraping. When unavailable, listeners fall back to their original methods.
+   - Supports self-hosted (`http://localhost:3000`) and cloud (`https://api.fastcrw.com`).
+
 1. **Google PAA & Autocomplete Scanner (`src/listeners/google-paa.js`)**
-   - Synthesizes realistic "People Also Ask" trees and autocomplete variations across Behold's 8 clinical clusters.
+   - **With CRW:** Uses CRW `/v1/search` for real Google search results, then Gemini extracts PAA patterns from scraped content.
+   - **Without CRW:** Synthesizes realistic PAA trees using Gemini (original behavior).
 2. **Reddit Scanner (`src/listeners/reddit-scanner.js`)**
    - Scans subreddits (`r/CPTSD`, `r/InternalFamilySystems`, `r/GriefSupport`, `r/ADHD`, `r/Anxiety`) via public JSON endpoints.
+   - **With CRW:** Enriches high-engagement posts by scraping full thread pages for richer quotes.
    - Extracts authentic audience quotes (`"I look fine on the outside but feel hollow inside"`).
 3. **YouTube Scanner (`src/listeners/youtube-scanner.js`)**
-   - Monitors therapist video trends (e.g., *Therapy in a Nutshell*, *Dr. Tori Olds*, *Patrick Teahan*).
+   - **With CRW:** Uses CRW `/v1/search` to find YouTube therapist videos (saves YouTube API quota).
+   - **With YouTube API:** Falls back to YouTube Data API v3.
+   - **Without either:** Uses Gemini-assisted analysis (original behavior).
 4. **Client FAQ Logger (`src/listeners/client-faq.js`)**
    - Allows Yiya to directly log recurring dilemmas encountered in therapy sessions.
 
@@ -81,10 +105,14 @@ graph TD
    - Deduplicates and groups signals by underlying psychological need.
 2. **Topic Scorer (`src/research/topic-scorer.js`)**
    - Evaluates each topic on the 25-point Behold Matrix (M1 through M5).
-3. **Evidence Mapper (`src/research/evidence-mapper.js`)**
+3. **Web Researcher (`src/crawlers/web-researcher.js`)**
+   - **With CRW:** Searches PubMed and Google Scholar for real academic papers. Verifies DOIs by scraping DOI.org/Crossref.
+   - Provides competitor content analysis and site crawling capabilities.
+4. **Evidence Mapper (`src/research/evidence-mapper.js`)**
    - Links 8–12 verified academic papers (with DOIs), clinical textbooks (with ISBNs), and audience language quotes.
+   - **With CRW:** Pre-searches for real academic sources and verifies each DOI by scraping its landing page.
    - Enforces strict anti-hallucination validation.
-4. **Content Drafter (`src/research/content-drafter.js`)**
+5. **Content Drafter (`src/research/content-drafter.js`)**
    - Generates educational article outlines, client FAQs, and internal linking structures formatted for clinical review.
 
 ---

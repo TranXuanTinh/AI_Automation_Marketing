@@ -5,12 +5,12 @@
  * repurposing across Yiya and Behold ecosystems (Pinterest, IG, YouTube, LinkedIn, Substack).
  */
 
-import { GoogleGenAI } from '@google/genai';
+import { createAIClient } from '../config/ai-client.js';
 import { getSystemPrompt } from '../config/behold-profile.js';
 import { insertBrief, db } from '../database/db.js';
 
 export async function generateSocialBriefs(apiKey, draftId) {
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = createAIClient(apiKey);
 
   const draft = db.prepare('SELECT * FROM content_drafts WHERE id = ?').get(draftId);
   if (!draft) throw new Error(`Draft ID ${draftId} not found`);

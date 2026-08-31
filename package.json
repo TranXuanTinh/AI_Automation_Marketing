@@ -9,7 +9,8 @@
     "dev": "node --watch server.js",
     "listen": "node src/cli/run-listeners.js",
     "research": "node src/cli/run-research.js",
-    "seed": "node src/cli/seed-data.js"
+    "seed": "node src/cli/seed-data.js",
+    "crawl": "node src/cli/run-crawl.js"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

@@ -66,6 +66,12 @@ flowchart TD
 ### Prerequisites
 - **Node.js** >= 18.0.0
 - **Gemini API Key** (from [Google AI Studio](https://aistudio.google.com/))
+- **CRW Web Scraper** *(optional but recommended)* — for real-time web scraping
+  ```bash
+  # Self-hosted install (free, no API key needed)
+  curl -fsSL https://fastcrw.com/install | sh
+  ```
+  See [CRW Integration Guide](docs/CRW_INTEGRATION.md) for full setup instructions.
 
 ### 1. Installation
 ```bash
@@ -107,8 +113,9 @@ You can run each stage independently via CLI or automate them on a cron schedule
 
 | Command | Description |
 |---|---|
-| `npm run listen` | **Stage 1:** Scans Google PAA, Reddit (r/CPTSD, r/IFS, etc.), and YouTube for audience questions. |
+| `npm run listen` | **Stage 1:** Scans Google PAA, Reddit (r/CPTSD, r/IFS, etc.), and YouTube for audience questions. Auto-detects CRW for real web scraping. |
 | `npm run research` | **Stage 2:** Groups signals, scores topics on 25-pt matrix, builds evidence maps, and drafts articles. |
+| `npm run crawl` | **CRW Mode:** Runs CRW-powered web scraping for all listeners. Supports sub-commands: `google`, `reddit`, `youtube`, `search`, `scrape`, `crawl`, `academic`. |
 | `npm run seed` | Seeds SQLite database with verified Beta 1 research data. |
 | `npm start` | Launches Express server and the web dashboard for Yiya's review. |
 | `npm run dev` | Starts server in watch mode for development. |
@@ -129,26 +136,31 @@ You can run each stage independently via CLI or automate them on a cron schedule
 ├── docs/                          # Comprehensive Documentation
 │   ├── ARCHITECTURE.md            # In-depth system architecture & data models
 │   ├── SETUP_GUIDE.md             # Complete step-by-step setup & troubleshooting
-│   └── METHODOLOGY.md             # Research SOP, scoring matrix & anti-hallucination protocols
+│   ├── METHODOLOGY.md             # Research SOP, scoring matrix & anti-hallucination protocols
+│   └── CRW_INTEGRATION.md        # CRW web scraper integration guide
 │
 ├── src/
 │   ├── config/
 │   │   ├── behold-profile.js      # Yiya's clinical profile, modalities & tone rules
 │   │   └── glossary.js            # Standardized project terminology
 │   │
+│   ├── crawlers/                  # CRW Web Scraper Integration
+│   │   ├── crw-client.js          # CRW REST API wrapper (scrape, search, crawl, map)
+│   │   └── web-researcher.js      # Academic source search & DOI verification
+│   │
 │   ├── database/
 │   │   └── db.js                  # SQLite database layer & schema
 │   │
-│   ├── listeners/                 # Stage 1: Audience Listening
-│   │   ├── google-paa.js          # Google PAA & autocomplete scanner
-│   │   ├── reddit-scanner.js      # Public Reddit scanner (r/CPTSD, r/IFS)
-│   │   ├── youtube-scanner.js     # YouTube therapist content scanner
+│   ├── listeners/                 # Stage 1: Audience Listening (CRW-enhanced)
+│   │   ├── google-paa.js          # Google PAA scanner (CRW search + Gemini fallback)
+│   │   ├── reddit-scanner.js      # Reddit scanner (CRW enrichment + JSON API)
+│   │   ├── youtube-scanner.js     # YouTube scanner (CRW + YT API + Gemini fallback)
 │   │   └── client-faq.js          # Manual client FAQ logger
 │   │
-│   ├── research/                  # Stage 2: AI Research & Create
+│   ├── research/                  # Stage 2: AI Research & Create (CRW-verified)
 │   │   ├── topic-collector.js     # Signal aggregator & deduplicator
 │   │   ├── topic-scorer.js        # 25-point Behold scoring engine
-│   │   ├── evidence-mapper.js     # PubMed & DOI verification engine
+│   │   ├── evidence-mapper.js     # PubMed & DOI verification engine (CRW-enhanced)
 │   │   └── content-drafter.js     # Clinical psychoeducation drafter
 │   │
 │   ├── publishing/                # Stage 3: Human Gate & Publish
@@ -159,9 +171,10 @@ You can run each stage independently via CLI or automate them on a cron schedule
 │   │   └── performance-checker.js # 1, 7, 30-day performance & learning feedback
 │   │
 │   └── cli/                       # Command-line runners
-│       ├── run-listeners.js
-│       ├── run-research.js
-│       └── seed-data.js
+│       ├── run-listeners.js       # Stage 1 runner (auto-detects CRW)
+│       ├── run-research.js        # Stage 2 runner
+│       ├── run-crawl.js           # CRW-powered crawling CLI
+│       └── seed-data.js           # Database seed script
 │
 ├── public/                        # Web Dashboard (Yiya's Clinical Gate)
 │   ├── index.html
@@ -189,3 +202,4 @@ For more in-depth specifications, read our dedicated documentation:
 - 📐 **[System Architecture](docs/ARCHITECTURE.md)** — Data schemas, pipelines, and state machines.
 - 🛠️ **[Setup & Deployment Guide](docs/SETUP_GUIDE.md)** — Production deployment, API keys, and cron configurations.
 - 🔬 **[Research Methodology](docs/METHODOLOGY.md)** — The 25-point scoring rubric and verification procedures.
+- 🕷️ **[CRW Integration Guide](docs/CRW_INTEGRATION.md)** — Web scraper setup, API usage, and data flow.

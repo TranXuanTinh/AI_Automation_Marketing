@@ -6,16 +6,16 @@
  * a deduplicated list of topic candidates.
  */
 
-import { GoogleGenAI } from '@google/genai';
+import { createAIClient } from '../config/ai-client.js';
 import { getSystemPrompt, TOPIC_CLUSTERS, TARGET_AUDIENCE } from '../config/behold-profile.js';
 import { getGlossaryPrompt } from '../config/glossary.js';
 import { getUnprocessedSignals, markSignalsProcessed, insertCandidate } from '../database/db.js';
 
 /**
- * Groups raw demand signals into topic candidates using Gemini.
+ * Groups raw demand signals into topic candidates using Gemini or Custom AI.
  */
 export async function collectTopics(apiKey) {
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = createAIClient(apiKey);
   const signals = getUnprocessedSignals();
 
   if (signals.length === 0) {

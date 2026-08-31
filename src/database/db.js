@@ -207,7 +207,19 @@ export function insertSource(source) {
     INSERT INTO sources (category, authors, title, publication, year, doi, isbn, url, clinical_takeaway, verified, verification_note)
     VALUES (@category, @authors, @title, @publication, @year, @doi, @isbn, @url, @clinical_takeaway, @verified, @verification_note)
   `);
-  return stmt.run(source);
+  return stmt.run({
+    category: source.category ?? 'peer_reviewed',
+    authors: source.authors ?? 'Unknown',
+    title: source.title ?? '',
+    publication: source.publication ?? '',
+    year: source.year ?? null,
+    doi: source.doi ?? null,
+    isbn: source.isbn ?? null,
+    url: source.url ?? null,
+    clinical_takeaway: source.clinical_takeaway ?? '',
+    verified: source.verified ?? 1,
+    verification_note: source.verification_note ?? '',
+  });
 }
 
 export function getSources() {
@@ -291,4 +303,5 @@ export function getDashboardStats() {
   };
 }
 
+export { db };
 export default db;

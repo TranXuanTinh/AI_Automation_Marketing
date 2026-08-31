@@ -5,7 +5,7 @@
  * Uses Gemini for assessment with structured output.
  */
 
-import { GoogleGenAI } from '@google/genai';
+import { createAIClient } from '../config/ai-client.js';
 import {
   getSystemPrompt,
   SCORING_MATRIX,
@@ -20,7 +20,7 @@ import db from '../database/db.js';
  * Scores all unscored topic candidates.
  */
 export async function scoreTopics(apiKey, candidateIds = null) {
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = createAIClient(apiKey);
 
   // Get candidates that haven't been scored yet
   let candidates;

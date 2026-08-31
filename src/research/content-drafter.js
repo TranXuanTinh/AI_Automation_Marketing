@@ -5,12 +5,12 @@
  * client FAQ, SEO metadata, and internal link suggestions.
  */
 
-import { GoogleGenAI } from '@google/genai';
+import { createAIClient } from '../config/ai-client.js';
 import { getSystemPrompt, TONE_GUIDELINES, MODALITIES } from '../config/behold-profile.js';
 import { insertDraft, db } from '../database/db.js';
 
 export async function draftContent(apiKey, scoredTopicId) {
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = createAIClient(apiKey);
 
   const topic = db.prepare(`
     SELECT st.*, tc.title, tc.underlying_problem, tc.intended_audience, tc.search_intent, tc.cluster

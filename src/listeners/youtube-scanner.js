@@ -2,13 +2,17 @@
  * Stage 1 — YouTube Scanner
  *
  * Scans therapist YouTube channels for content related to
- * Behold's topic clusters. Uses YouTube Data API v3 if key
- * is available, falls back to Gemini-assisted analysis.
+ * Behold's topic clusters.
+ *
+ * PRIMARY: Uses CRW web scraper (/v1/search) for real YouTube search results.
+ * SECONDARY: Uses YouTube Data API v3 if CRW not available but key is set.
+ * FALLBACK: Uses Gemini-assisted analysis when neither CRW nor YouTube API is available.
  */
 
-import { GoogleGenAI } from '@google/genai';
+import { createAIClient } from '../config/ai-client.js';
 import { TOPIC_CLUSTERS, getSystemPrompt } from '../config/behold-profile.js';
 import { insertSignal } from '../database/db.js';
+import { createCRWClientFromEnv } from '../crawlers/crw-client.js';
 
 const THERAPIST_CHANNELS = [
   { name: 'Therapy in a Nutshell', query: 'Therapy in a Nutshell' },
@@ -20,6 +24,79 @@ const THERAPIST_CHANNELS = [
 ];
 
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
+
+/**
+ * Scans YouTube using CRW web search and scraping.
+ * Uses CRW /v1/search to find YouTube videos, then /v1/scrape for details.
+ */
+async function scanYouTubeWithCRW(crw, geminiApiKey, cluster) {
+  const ai = createAIClient(geminiApiKey);
+  const videos = [];
+
+  // Search for YouTube videos related to this cluster
+  const searchQueries = [
+    `site:youtube.com ${cluster.name} therapy counselling`,
+    `site:youtube.com ${cluster.name} ${THERAPIST_CHANNELS.slice(0, 3).map(c => c.name).join(' OR ')}`,
+  ];
+
+  let allSearchContent = '';
+
+  for (const query of searchQueries) {
+    try {
+      const searchResult = await crw.search(query, {
+        limit: 8,
+        formats: ['markdown'],
+      });
+
+      if (searchResult.success && searchResult.data) {
+        for (const item of searchResult.data) {
+          // Filter for YouTube results
+          if (item.url && item.url.includes('youtube.com/watch')) {
+            allSearchContent += `\n--- Video: ${item.title || ''} ---\n`;
+            allSearchContent += `URL: ${item.url}\n`;
+            allSearchContent += `Description: ${item.description || ''}\n`;
+            allSearchContent += item.markdown ? item.markdown.substring(0, 800) : '';
+            allSearchContent += '\n';
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`  ⚠ CRW YouTube search failed: ${err.message}`);
+    }
+  }
+
+  if (!allSearchContent.trim()) {
+    return [];
+  }
+
+  // Use Gemini to structure the CRW search results
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: `Extract YouTube video information from the following REAL search results about "${cluster.name}" therapy content:
+
+SCRAPED RESULTS:
+${allSearchContent.substring(0, 6000)}
+
+For each video found, provide:
+- title: The video title
+- channel: The channel name (if identifiable)
+- description: A brief summary
+- engagement: Estimated engagement level ('high', 'medium', 'low')
+- url: The YouTube URL
+
+Format as JSON array. Only include real videos found in the content above.`,
+    config: {
+      systemInstruction: getSystemPrompt('You are extracting YouTube video data from search results.'),
+      responseMimeType: 'application/json',
+    },
+  });
+
+  try {
+    return JSON.parse(response.text);
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Searches YouTube using Data API v3 (if key available)
@@ -53,7 +130,7 @@ async function searchYouTubeAPI(query, apiKey, maxResults = 10) {
  * when YouTube API key is not available.
  */
 async function scanViaGemini(apiKey, cluster) {
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = createAIClient(apiKey);
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
@@ -84,19 +161,39 @@ Format as JSON array. Only include videos you have high confidence actually exis
 
 /**
  * Scans YouTube for therapist content related to Behold's topics.
+ * Uses the best available method: CRW → YouTube API → Gemini fallback.
  */
 export async function scanYouTube(geminiApiKey, youtubeApiKey = null, clusterIds = null) {
   const clusters = clusterIds
     ? TOPIC_CLUSTERS.filter(c => clusterIds.includes(c.id))
     : TOPIC_CLUSTERS;
 
+  // Check CRW availability
+  const crw = createCRWClientFromEnv();
+  const crwAvailable = crw ? await crw.isAvailable() : false;
+
+  if (crwAvailable) {
+    console.log('  🔗 CRW detected — using real web search for YouTube videos');
+  } else if (youtubeApiKey) {
+    console.log('  📺 Using YouTube Data API v3');
+  } else {
+    console.log('  📡 Using Gemini-simulated YouTube analysis (set CRW_BASE_URL or YOUTUBE_API_KEY for real data)');
+  }
+
   const results = [];
 
   for (const cluster of clusters) {
+    let usedSource = 'youtube';
     let videos = [];
 
-    if (youtubeApiKey) {
-      // Use YouTube Data API for real search results
+    // Priority 1: CRW web search
+    if (crwAvailable) {
+      videos = await scanYouTubeWithCRW(crw, geminiApiKey, cluster);
+      if (videos.length > 0) usedSource = 'youtube_crw';
+    }
+
+    // Priority 2: YouTube Data API
+    if (videos.length === 0 && youtubeApiKey) {
       const searchQuery = `${cluster.name} therapy counselling`;
       const apiResults = await searchYouTubeAPI(searchQuery, youtubeApiKey);
 
@@ -108,17 +205,19 @@ export async function scanYouTube(geminiApiKey, youtubeApiKey = null, clusterIds
           engagement: 'unknown',
           url: v.url,
         }));
+        usedSource = 'youtube_api';
       }
     }
 
-    // Fall back to Gemini analysis if no API key or API failed
+    // Priority 3: Gemini / Custom AI fallback
     if (videos.length === 0) {
       videos = await scanViaGemini(geminiApiKey, cluster);
+      usedSource = 'youtube_gemini';
     }
 
     for (const video of videos) {
       const signal = {
-        source: 'youtube',
+        source: usedSource,
         cluster: cluster.id,
         title: video.title || 'Unknown',
         body: JSON.stringify({ channel: video.channel, description: video.description }),

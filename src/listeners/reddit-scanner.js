@@ -4,10 +4,17 @@
  * Scans configured subreddits for threads relevant to
  * Behold's topic clusters. Uses Reddit's public JSON API
  * (no OAuth required for reading public posts).
+ *
+ * ENRICHMENT: When CRW is available, scrapes full Reddit thread
+ * content for richer quotes and deeper context extraction.
  */
+
+import dotenv from 'dotenv';
+dotenv.config();
 
 import { TOPIC_CLUSTERS } from '../config/behold-profile.js';
 import { insertSignal } from '../database/db.js';
+import { createCRWClientFromEnv } from '../crawlers/crw-client.js';
 
 const REDDIT_BASE = 'https://www.reddit.com';
 const REQUEST_DELAY = 2000; // ms between requests to respect rate limits
@@ -75,15 +82,60 @@ function extractQuotes(text) {
 }
 
 /**
+ * Enriches a Reddit post with CRW scraping for deeper content extraction.
+ * Scrapes the full thread page to get comments and richer context.
+ *
+ * @param {Object} crw - CRW client instance
+ * @param {string} permalink - Reddit post permalink
+ * @returns {Promise<Object|null>} - { enrichedBody, enrichedQuotes } or null on failure
+ */
+async function enrichWithCRW(crw, permalink) {
+  try {
+    const url = `${REDDIT_BASE}${permalink}`;
+    const result = await crw.scrape(url, {
+      formats: ['markdown'],
+      onlyMainContent: true,
+    });
+
+    if (!result.success || !result.data?.markdown) {
+      return null;
+    }
+
+    const fullContent = result.data.markdown;
+
+    // Extract richer quotes from the full scraped content
+    const enrichedQuotes = extractQuotes(fullContent);
+
+    return {
+      enrichedBody: fullContent.substring(0, 4000),
+      enrichedQuotes,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Scans all configured subreddits for relevant posts.
+ * When CRW is available, enriches the top relevant posts with
+ * scraped content for deeper quote extraction.
  */
 export async function scanReddit(clusterIds = null) {
   const clusters = clusterIds
     ? TOPIC_CLUSTERS.filter(c => clusterIds.includes(c.id))
     : TOPIC_CLUSTERS;
 
+  // Check CRW availability
+  const crw = createCRWClientFromEnv();
+  const crwAvailable = crw ? await crw.isAvailable() : false;
+
+  if (crwAvailable) {
+    console.log('  🔗 CRW detected — will enrich top Reddit posts with full thread scraping');
+  }
+
   const results = [];
   const seenUrls = new Set();
+  let enrichedCount = 0;
 
   for (const cluster of clusters) {
     for (const subreddit of cluster.subreddits) {
@@ -96,14 +148,28 @@ export async function scanReddit(clusterIds = null) {
         if (seenUrls.has(url)) continue;
         seenUrls.add(url);
 
-        const quotes = extractQuotes(post.selftext);
+        let body = (post.selftext || '').substring(0, 2000);
+        let quotes = extractQuotes(post.selftext);
         const engagement = `${post.score} upvotes, ${post.num_comments} comments`;
+        let source = 'reddit';
+
+        // Enrich with CRW if available (for posts with high engagement)
+        if (crwAvailable && post.score >= 10) {
+          const enrichment = await enrichWithCRW(crw, post.permalink);
+          if (enrichment) {
+            body = enrichment.enrichedBody;
+            quotes = [...new Set([...quotes, ...enrichment.enrichedQuotes])].slice(0, 8);
+            source = 'reddit_crw';
+            enrichedCount++;
+          }
+          await sleep(1000); // Respect CRW rate limiting
+        }
 
         const signal = {
-          source: 'reddit',
+          source,
           cluster: cluster.id,
           title: post.title,
-          body: (post.selftext || '').substring(0, 2000),
+          body,
           url,
           engagement_metric: engagement,
           raw_quotes: quotes.length > 0 ? JSON.stringify(quotes) : null,
@@ -118,7 +184,7 @@ export async function scanReddit(clusterIds = null) {
     }
   }
 
-  console.log(`  → Total Reddit signals: ${results.length}`);
+  console.log(`  → Total Reddit signals: ${results.length}${crwAvailable ? ` (${enrichedCount} enriched with CRW)` : ''}`);
   return results;
 }
 
