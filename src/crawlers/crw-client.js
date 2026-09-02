@@ -36,12 +36,13 @@ export function createCRWClient(options = {}) {
   /**
    * Makes a POST request to a CRW endpoint.
    */
-  async function post(endpoint, body) {
+  async function post(endpoint, body, timeoutMs = 12000) {
     const url = `${baseUrl}${endpoint}`;
     const response = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     if (!response.ok) {
@@ -55,11 +56,12 @@ export function createCRWClient(options = {}) {
   /**
    * Makes a GET request to a CRW endpoint.
    */
-  async function get(endpoint) {
+  async function get(endpoint, timeoutMs = 12000) {
     const url = `${baseUrl}${endpoint}`;
     const response = await fetch(url, {
       method: 'GET',
       headers,
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     if (!response.ok) {
@@ -80,6 +82,27 @@ export function createCRWClient(options = {}) {
         const response = await fetch(`${baseUrl}/health`, {
           method: 'GET',
           signal: AbortSignal.timeout(3000),
+        });
+        return response.ok;
+      } catch {
+        return false;
+      }
+    },
+
+    /**
+     * Checks if CRW search is available (cloud endpoint or search supported).
+     * @returns {Promise<boolean>}
+     */
+    async isSearchAvailable() {
+      if (baseUrl.includes('fastcrw.com')) {
+        return true;
+      }
+      try {
+        const response = await fetch(`${baseUrl}/v1/search`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ query: 'test', limit: 1 }),
+          signal: AbortSignal.timeout(2000),
         });
         return response.ok;
       } catch {

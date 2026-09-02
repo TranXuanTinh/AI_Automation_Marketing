@@ -241,8 +241,14 @@ export async function scanGooglePAA(apiKey, clusterIds = null) {
   const crw = createCRWClientFromEnv();
 
   if (crw && await crw.isAvailable()) {
-    console.log('  🔗 CRW detected — using real Google search scraping');
-    return scanGooglePAAWithCRW(apiKey, crw, clusterIds);
+    const searchReady = await crw.isSearchAvailable();
+    if (searchReady) {
+      console.log('  🔗 CRW detected — using real Google search scraping');
+      return scanGooglePAAWithCRW(apiKey, crw, clusterIds);
+    } else {
+      console.log('  🔗 CRW connected (scraping active, search cloud-only) — using AI PAA synthesis');
+      return scanGooglePAAWithGemini(apiKey, clusterIds);
+    }
   }
 
   console.log('  📡 CRW not available — using Gemini-simulated PAA (set CRW_BASE_URL for real scraping)');

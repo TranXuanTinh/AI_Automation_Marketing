@@ -9,7 +9,7 @@
  * - Verify DOIs by scraping DOI.org/Crossref
  */
 
-import { createAIClient } from '../config/ai-client.js';
+import { createAIClient, safeJsonParse } from '../config/ai-client.js';
 import { getSystemPrompt } from '../config/behold-profile.js';
 import { insertSource, db } from '../database/db.js';
 import { searchAcademicSources, verifyDOI } from '../crawlers/web-researcher.js';
@@ -79,11 +79,9 @@ Format as JSON array with objects matching:
     },
   });
 
-  let sources;
-  try {
-    sources = JSON.parse(response.text);
-  } catch (err) {
-    console.error('  ✗ Failed to parse evidence mapper response:', err.message);
+  let sources = safeJsonParse(response.text);
+  if (!sources || !Array.isArray(sources)) {
+    console.error('  ✗ Failed to parse evidence mapper response as JSON array.');
     return [];
   }
 

@@ -171,8 +171,9 @@ export async function scanYouTube(geminiApiKey, youtubeApiKey = null, clusterIds
   // Check CRW availability
   const crw = createCRWClientFromEnv();
   const crwAvailable = crw ? await crw.isAvailable() : false;
+  const crwSearchAvailable = crwAvailable && (await crw.isSearchAvailable());
 
-  if (crwAvailable) {
+  if (crwSearchAvailable) {
     console.log('  🔗 CRW detected — using real web search for YouTube videos');
   } else if (youtubeApiKey) {
     console.log('  📺 Using YouTube Data API v3');
@@ -186,8 +187,8 @@ export async function scanYouTube(geminiApiKey, youtubeApiKey = null, clusterIds
     let usedSource = 'youtube';
     let videos = [];
 
-    // Priority 1: CRW web search
-    if (crwAvailable) {
+    // Priority 1: CRW web search (when search is enabled)
+    if (crwSearchAvailable) {
       videos = await scanYouTubeWithCRW(crw, geminiApiKey, cluster);
       if (videos.length > 0) usedSource = 'youtube_crw';
     }

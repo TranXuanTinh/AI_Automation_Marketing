@@ -18,23 +18,30 @@ import { GoogleGenAI } from '@google/genai';
  * Normalizes environment variables to determine the active AI provider.
  */
 export function getAIConfig(explicitApiKey = null) {
-  const apiKey = explicitApiKey ||
-    process.env.XFTOKEN_API_KEY ||
-    process.env.GEMINI_API_KEY ||
-    process.env.OPENAI_API_KEY ||
-    '';
+  const geminiKey = process.env.GEMINI_API_KEY?.trim() || '';
+  const customKey = process.env.XFTOKEN_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || '';
 
-  const baseUrl = process.env.XFTOKEN_BASE_URL ||
-    process.env.GEMINI_BASE_URL ||
-    process.env.OPENAI_BASE_URL ||
-    '';
+  // Determine active key
+  let apiKey = explicitApiKey || geminiKey || customKey || '';
 
-  const model = process.env.XFTOKEN_MODEL ||
-    process.env.LLM_MODEL ||
-    (baseUrl.includes('nvidia') ? 'meta/llama-3.1-70b-instruct' : 'gemini-2.5-flash');
+  const isGeminiKey = apiKey.startsWith('AIzaSy');
 
-  // If a custom Base URL is set or the key is not a standard Google key (AIzaSy...), use Custom/OpenAI mode
-  const isCustomEndpoint = !!baseUrl || (apiKey && !apiKey.startsWith('AIzaSy'));
+  let baseUrl = '';
+  let model = '';
+
+  if (isGeminiKey) {
+    // Official Google Gemini Mode
+    baseUrl = process.env.GEMINI_BASE_URL?.trim() || '';
+    model = process.env.LLM_MODEL || 'gemini-2.5-flash';
+  } else {
+    // Custom OpenAI / NVIDIA NIM Mode
+    baseUrl = process.env.XFTOKEN_BASE_URL?.trim() || process.env.OPENAI_BASE_URL?.trim() || '';
+    model = process.env.LLM_MODEL ||
+      process.env.XFTOKEN_MODEL ||
+      (baseUrl.includes('nvidia') ? 'meta/llama-3.2-11b-vision-instruct' : 'gemini-2.5-flash');
+  }
+
+  const isCustomEndpoint = !isGeminiKey || !!baseUrl;
 
   return {
     apiKey,
@@ -106,27 +113,78 @@ export function createAIClient(explicitApiKey = null) {
             requestBody.response_format = { type: 'json_object' };
           }
 
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${config.apiKey}`,
-            },
-            body: JSON.stringify(requestBody),
-          });
+          let lastError = null;
+          let response = null;
 
-          if (!response.ok) {
-            const errText = await response.text().catch(() => '');
-            throw new Error(`AI API request to ${endpoint} failed (${response.status}): ${errText}`);
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+              response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${config.apiKey}`,
+                },
+                body: JSON.stringify(requestBody),
+                signal: AbortSignal.timeout(120000),
+              });
+
+              if (response.ok) {
+                break;
+              }
+
+              const errText = await response.text().catch(() => '');
+              lastError = new Error(`AI API request to ${endpoint} failed (${response.status}): ${errText}`);
+
+              // If rate limited or server error (500, 502, 503), retry after backoff
+              if ([429, 500, 502, 503, 504].includes(response.status) && attempt < 3) {
+                const backoffMs = attempt * 2000;
+                console.warn(`  ⚠️ AI API returned ${response.status}. Retrying in ${backoffMs / 1000}s (attempt ${attempt}/3)...`);
+                await new Promise(r => setTimeout(r, backoffMs));
+                continue;
+              }
+
+              throw lastError;
+            } catch (err) {
+              lastError = err;
+              if (attempt < 3 && !err.message.includes('410')) {
+                const backoffMs = attempt * 2000;
+                console.warn(`  ⚠️ AI API network error: ${err.message}. Retrying in ${backoffMs / 1000}s (attempt ${attempt}/3)...`);
+                await new Promise(r => setTimeout(r, backoffMs));
+                continue;
+              }
+              throw lastError;
+            }
+          }
+
+          if (!response || !response.ok) {
+            throw lastError || new Error(`AI API request failed after retries`);
           }
 
           const data = await response.json();
           let rawText = data?.choices?.[0]?.message?.content || '';
 
-          // Clean markdown code blocks if present (```json ... ```)
-          const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-          if (jsonMatch) {
-            rawText = jsonMatch[1].trim();
+          // Clean JSON response (handle markdown blocks or conversational preamble)
+          const jsonBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (jsonBlockMatch) {
+            rawText = jsonBlockMatch[1].trim();
+          } else if (rawText.includes('{') || rawText.includes('[')) {
+            const firstBracket = rawText.indexOf('[');
+            const firstBrace = rawText.indexOf('{');
+            let startIdx = -1;
+            if (firstBracket !== -1 && firstBrace !== -1) {
+              startIdx = Math.min(firstBracket, firstBrace);
+            } else {
+              startIdx = firstBracket !== -1 ? firstBracket : firstBrace;
+            }
+
+            if (startIdx !== -1) {
+              const lastBracket = rawText.lastIndexOf(']');
+              const lastBrace = rawText.lastIndexOf('}');
+              const endIdx = Math.max(lastBracket, lastBrace);
+              if (endIdx > startIdx) {
+                rawText = rawText.substring(startIdx, endIdx + 1).trim();
+              }
+            }
           }
 
           return {
@@ -155,4 +213,59 @@ export function createAIClient(explicitApiKey = null) {
   };
 }
 
-export default { createAIClient, getAIConfig };
+/**
+ * Resilient JSON parser that handles markdown fences, unescaped newlines, and preamble text.
+ */
+export function safeJsonParse(rawText) {
+  if (!rawText || typeof rawText !== 'string') return null;
+  let text = rawText.trim();
+
+  // Strip markdown code fences if present
+  const jsonBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (jsonBlockMatch) {
+    text = jsonBlockMatch[1].trim();
+  }
+
+  // Extract from outer brackets/braces if model included conversational wrapper
+  const firstBracket = text.indexOf('[');
+  const firstBrace = text.indexOf('{');
+  let startIdx = -1;
+  if (firstBracket !== -1 && firstBrace !== -1) {
+    startIdx = Math.min(firstBracket, firstBrace);
+  } else {
+    startIdx = firstBracket !== -1 ? firstBracket : firstBrace;
+  }
+
+  if (startIdx !== -1) {
+    const lastBracket = text.lastIndexOf(']');
+    const lastBrace = text.lastIndexOf('}');
+    const endIdx = Math.max(lastBracket, lastBrace);
+    if (endIdx > startIdx) {
+      text = text.substring(startIdx, endIdx + 1).trim();
+    }
+  }
+
+  // Attempt 1: Direct JSON.parse
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Attempt 2: Sanitize unescaped newlines/tabs inside quotes
+    try {
+      const sanitized = text.replace(/"((?:\\.|[^"\\])*)"/gs, (m, p) => {
+        return '"' + p.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t') + '"';
+      });
+      return JSON.parse(sanitized);
+    } catch {
+      // Attempt 3: Strip control characters
+      try {
+        const cleanCtrl = text.replace(/[\x00-\x1F\x7F-\x9F]/g, ch => (ch === '\n' || ch === '\r' || ch === '\t') ? ' ' : '');
+        return JSON.parse(cleanCtrl);
+      } catch {
+        return null;
+      }
+    }
+  }
+}
+
+export default { createAIClient, getAIConfig, safeJsonParse };
+

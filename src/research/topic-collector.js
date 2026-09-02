@@ -23,76 +23,109 @@ export async function collectTopics(apiKey) {
     return [];
   }
 
-  console.log(`  → Processing ${signals.length} demand signals...`);
+  console.log(`  → Processing ${signals.length} demand signals across clusters...`);
 
-  // Prepare signal summary for Gemini
-  const signalSummary = signals.map(s => ({
-    id: s.id,
-    source: s.source,
-    cluster: s.cluster,
-    title: s.title,
-    engagement: s.engagement_metric,
-    quotes: s.raw_quotes ? JSON.parse(s.raw_quotes) : [],
-  }));
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: `You have ${signals.length} raw demand signals from Google PAA, Reddit, YouTube, and client FAQs related to mental health and counselling topics.
-
-Here are the signals:
-${JSON.stringify(signalSummary, null, 2)}
-
-TASK: Group these signals into 8–15 distinct topic candidates. Each candidate should represent a single, focused content opportunity.
-
-For each topic candidate, provide:
-- title: A compelling working title for the article (not generic — use the audience's own language)
-- underlying_problem: The emotional/practical problem behind the search (1–2 sentences)
-- intended_audience: Who specifically this helps (be specific, not generic)
-- search_intent: What the searcher hopes to find (informational, validation, practical help, etc.)
-- demand_signals_summary: Which signal IDs support this topic (array of integers)
-- cluster: The closest topic cluster from: ${TOPIC_CLUSTERS.map(c => c.id).join(', ')}
-
-GLOSSARY (use these terms consistently):
-${getGlossaryPrompt()}
-
-TARGET AUDIENCE: ${TARGET_AUDIENCE.primary}
-
-RULES:
-- Deduplicate: merge signals that ask the same question differently
-- Prioritize questions that reflect deep emotional struggles, not surface-level queries
-- Working titles should sound like something a real person would search or click on
-- Each topic should be specific enough for a 1,200–1,600 word article
-
-Format as JSON array.`,
-    config: {
-      systemInstruction: getSystemPrompt('You are grouping demand signals into content opportunities.'),
-      responseMimeType: 'application/json',
-    },
-  });
-
-  let candidates;
-  try {
-    candidates = JSON.parse(response.text);
-  } catch {
-    console.error('  ✗ Failed to parse topic collector response.');
-    return [];
+  // Group signals by cluster
+  const signalsByCluster = new Map();
+  for (const s of signals) {
+    const cluster = s.cluster || 'general';
+    if (!signalsByCluster.has(cluster)) {
+      signalsByCluster.set(cluster, []);
+    }
+    signalsByCluster.get(cluster).push(s);
   }
 
   const results = [];
-  for (const c of candidates) {
-    const signalIds = c.demand_signals_summary || [];
+  const systemPrompt = getSystemPrompt('You are grouping demand signals into content opportunities for Behold Counselling.');
+  const glossaryPrompt = getGlossaryPrompt();
 
-    const result = insertCandidate({
-      title: c.title,
-      underlying_problem: c.underlying_problem,
-      intended_audience: c.intended_audience,
-      search_intent: c.search_intent,
-      demand_signals_summary: JSON.stringify(signalIds),
-      cluster: c.cluster,
-    });
+  for (const [clusterId, clusterSignals] of signalsByCluster.entries()) {
+    const clusterInfo = TOPIC_CLUSTERS.find(c => c.id === clusterId);
+    const clusterName = clusterInfo ? clusterInfo.name : clusterId;
 
-    results.push({ id: result.lastInsertRowid, ...c });
-    console.log(`  ✓ Candidate: "${c.title}" (cluster: ${c.cluster})`);
+    // Deduplicate and pick top 20 representative signals
+    const seenTitles = new Set();
+    const representativeSignals = [];
+
+    const sortedSignals = [...clusterSignals].sort((a, b) => (b.engagement_metric || 0) - (a.engagement_metric || 0));
+    for (const s of sortedSignals) {
+      const cleanTitle = (s.title || '').trim().toLowerCase();
+      if (!cleanTitle || seenTitles.has(cleanTitle)) continue;
+      seenTitles.add(cleanTitle);
+      representativeSignals.push({
+        id: s.id,
+        source: s.source,
+        title: s.title.trim(),
+      });
+      if (representativeSignals.length >= 20) break;
+    }
+
+    if (representativeSignals.length === 0) continue;
+
+    const signalsList = representativeSignals.map(s => `[ID: ${s.id}] (${s.source}) ${s.title}`).join('\n');
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `TOPIC CLUSTER: "${clusterName}" (${clusterId})
+TARGET AUDIENCE: ${TARGET_AUDIENCE.primary}
+
+DEMAND SIGNALS OBSERVED (sample of ${clusterSignals.length} signals):
+${signalsList}
+
+GLOSSARY (use consistently):
+${glossaryPrompt}
+
+TASK: Synthesize these demand signals into 1–2 distinct, highly engaging topic candidates for educational psychoeducation articles (1,200–1,600 words).
+Focus on the authentic emotional struggles expressed in the queries, not generic advice.
+
+Provide output as a JSON array of objects:
+[
+  {
+    "title": "A compelling working title using the audience's own language",
+    "underlying_problem": "1–2 sentences explaining the emotional/practical struggle behind the search",
+    "intended_audience": "Specific description of who this helps",
+    "search_intent": "What the person hopes to find (e.g. validation, somatic tools, parts understanding)",
+    "demand_signals_summary": [signalId1, signalId2],
+    "cluster": "${clusterId}"
+  }
+]`,
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: 'application/json',
+        },
+      });
+
+      let candidates = [];
+      try {
+        candidates = JSON.parse(response.text);
+        if (!Array.isArray(candidates)) {
+          candidates = [candidates];
+        }
+      } catch {
+        console.warn(`  ⚠ Could not parse JSON for cluster ${clusterName}, skipping cluster.`);
+        continue;
+      }
+
+      for (const c of candidates) {
+        if (!c.title) continue;
+        const signalIds = Array.isArray(c.demand_signals_summary) ? c.demand_signals_summary : [];
+
+        const result = insertCandidate({
+          title: c.title,
+          underlying_problem: c.underlying_problem || '',
+          intended_audience: c.intended_audience || TARGET_AUDIENCE.primary,
+          search_intent: c.search_intent || 'Validation and practical psychoeducation',
+          demand_signals_summary: JSON.stringify(signalIds),
+          cluster: clusterId,
+        });
+
+        results.push({ id: result.lastInsertRowid, ...c, cluster: clusterId });
+        console.log(`  ✓ [${clusterName}] Candidate: "${c.title}"`);
+      }
+    } catch (clusterErr) {
+      console.warn(`  ⚠ Cluster ${clusterName} topic grouping failed: ${clusterErr.message}`);
+    }
   }
 
   // Mark all processed signals

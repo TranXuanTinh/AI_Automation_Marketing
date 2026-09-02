@@ -22,7 +22,7 @@ import { createCRWClientFromEnv } from './crw-client.js';
  */
 export async function searchAcademicSources(query, options = {}) {
   const crw = createCRWClientFromEnv();
-  if (!crw || !(await crw.isAvailable())) {
+  if (!crw || !(await crw.isAvailable()) || !(await crw.isSearchAvailable())) {
     return [];
   }
 
