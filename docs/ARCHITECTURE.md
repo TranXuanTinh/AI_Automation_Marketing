@@ -11,49 +11,49 @@ The system follows a **Human-in-the-Loop (HITL) Event-Driven Pipeline** divided 
 
 ```mermaid
 graph TD
-    subgraph CRW_LAYER["CRW Web Scraper (Self-hosted / Cloud)"]
-        CRW_S["/v1/search"]
-        CRW_SC["/v1/scrape"]
-        CRW_CR["/v1/crawl"]
-        CRW_M["/v1/map"]
+    subgraph CRW_LAYER["⚙️ CRW Web Scraper Layer (Self-hosted / Cloud)"]
+        CRW_S["<b>/v1/search</b>"]
+        CRW_SC["<b>/v1/scrape</b>"]
+        CRW_CR["<b>/v1/crawl</b>"]
+        CRW_M["<b>/v1/map</b>"]
     end
 
-    subgraph STAGE_1["Stage 1: Audience Listening Engine"]
-        L1["Google PAA Scanner\n(CRW search + Gemini fallback)"] --> SIG[("demand_signals\n(Raw Table)")]
-        L2["Reddit JSON Scanner\n(CRW enrichment)"] --> SIG
-        L3["YouTube Scanner\n(CRW + YT API + Gemini)"] --> SIG
-        L4["Yiya FAQ Dashboard Form"] --> SIG
+    subgraph STAGE_1["📡 Stage 1: Audience Listening Engine"]
+        L1["<b>Google PAA Scanner</b><br/><i>(CRW search + Gemini fallback)</i>"] --> SIG[(\"<b>demand_signals</b><br/><i>(Raw Signals Table)</i>\")]
+        L2["<b>Reddit JSON Scanner</b><br/><i>(CRW enrichment)</i>"] --> SIG
+        L3["<b>YouTube Scanner</b><br/><i>(CRW + YT API + Gemini)</i>"] --> SIG
+        L4["<b>Yiya FAQ Dashboard Form</b>"] --> SIG
     end
 
-    subgraph STAGE_2["Stage 2: AI Research & Clinical Formulation"]
-        SIG --> TC["Topic Collector\n(Gemini 2.5 Flash)"]
-        TC --> CAND[("topic_candidates")]
-        CAND --> TS["Topic Scorer\n(25-Point Matrix)"]
-        TS --> SCORED[("scored_topics")]
-        SCORED --> EM["Evidence Mapper\n(CRW verification + Gemini)"]
-        EM --> SRC[("sources &\nevidence_maps")]
-        SCORED --> CD["Content Drafter\n(Psychoeducation & FAQ)"]
+    subgraph STAGE_2["🔬 Stage 2: AI Research & Clinical Formulation"]
+        SIG --> TC["<b>Topic Collector</b><br/><i>(Cluster Batching)</i>"]
+        TC --> CAND[(\"<b>topic_candidates</b>\")]
+        CAND --> TS["<b>Topic Scorer</b><br/><i>(25-Point Matrix)</i>"]
+        TS --> SCORED[(\"<b>scored_topics</b>\")]
+        SCORED --> EM["<b>Evidence Mapper</b><br/><i>(PubMed DOI + ISBN)</i>"]
+        EM --> SRC[(\"<b>sources & evidence_maps</b>\")]
+        SCORED --> CD["<b>Content Drafter</b><br/><i>(Psychoeducation & FAQ)</i>"]
         SRC --> CD
-        CD --> DRAFTS[("content_drafts\n(Status: review)")]
+        CD --> DRAFTS[(\"<b>content_drafts</b><br/><i>(Status: review)</i>\")]
     end
 
-    subgraph STAGE_3["Stage 3: Clinical Gate & Multi-Channel Distribution"]
-        DRAFTS --> UI["Yiya Clinical Review Dashboard"]
+    subgraph STAGE_3["🛡️ Stage 3: Clinical Gate & Multi-Channel Distribution"]
+        DRAFTS --> UI["<b>👤 Yiya Clinical Review Gate</b><br/><b>(Approve / Revise)</b>"]
         UI -- Reject / Revise --> DRAFTS
-        UI -- Approved --> SBG["Social & Visual Brief Generator"]
-        UI -- Approved --> UTM["UTM Linker & Publisher"]
-        SBG --> BRIEFS[("production_briefs")]
-        UTM --> PUB[("published_content")]
-        PUB --> ECO_A["3A. Yiya Ecosystem\n(Pinterest, Substack, IG)"]
-        PUB --> ECO_B["3B. Behold Ecosystem\n(Blog, LinkedIn, PsychToday)"]
+        UI -- Approved --> SBG["<b>Social & Visual Brief Generator</b><br/><i>(Infographics, Quotes, Reels)</i>"]
+        UI -- Approved --> UTM["<b>UTM Linker & Publisher</b>"]
+        SBG --> BRIEFS[(\"<b>production_briefs</b>\")]
+        UTM --> PUB[(\"<b>published_content</b>\")]
+        PUB --> ECO_A["<b>3A. Yiya Ecosystem</b><br/><i>(Pinterest, Substack, IG)</i>"]
+        PUB --> ECO_B["<b>3B. Behold Ecosystem</b><br/><i>(Blog, LinkedIn, PsychToday)</i>"]
     end
 
-    subgraph STAGE_4["Stage 4: Performance Monitoring & System Memory"]
-        PUB --> CRON["Cron Audit Engine\n(1, 7, 30 Days)"]
-        CRON --> METRICS[("performance_metrics")]
-        METRICS --> LEARN["Learning Engine\n(Repeat / Improve / Stop)"]
-        LEARN --> LOG[("learning_log")]
-        LOG -. Feedback .-> TC
+    subgraph STAGE_4["📈 Stage 4: Performance Monitoring & System Memory"]
+        PUB --> CRON["<b>Cron Audit Engine</b><br/><i>(1, 7, 30 Days)</i>"]
+        CRON --> METRICS[(\"<b>performance_metrics</b>\")]
+        METRICS --> LEARN["<b>Learning Engine</b><br/><i>(Repeat / Improve / Stop)</i>"]
+        LEARN --> LOG[(\"<b>learning_log</b>\")]
+        LOG -. Continuous Feedback .-> TC
     end
 
     CRW_S --> L1
@@ -62,11 +62,21 @@ graph TD
     CRW_S --> EM
     CRW_SC --> EM
 
-    style CRW_LAYER fill:#1a1a2e,stroke:#e94560,color:#eaeaea
-    style STAGE_1 fill:#15221e,stroke:#c4a35a,color:#f3efe6
-    style STAGE_2 fill:#15221e,stroke:#c4a35a,color:#f3efe6
-    style STAGE_3 fill:#15221e,stroke:#c4a35a,color:#f3efe6
-    style STAGE_4 fill:#15221e,stroke:#c4a35a,color:#f3efe6
+    %% Bolder, richer & balanced styling
+    style CRW_LAYER fill:#e2e8f0,stroke:#334155,stroke-width:2.5px,color:#0f172a
+    style STAGE_1 fill:#dcfce7,stroke:#15803d,stroke-width:2.5px,color:#14532d
+    style STAGE_2 fill:#fef3c7,stroke:#b45309,stroke-width:2.5px,color:#78350f
+    style STAGE_3 fill:#ede9fe,stroke:#6d28d9,stroke-width:2.5px,color:#4c1d95
+    style STAGE_4 fill:#e0f2fe,stroke:#0369a1,stroke-width:2.5px,color:#0c4a6e
+
+    classDef default fill:#ffffff,stroke:#1e293b,stroke-width:2px,color:#0f172a
+    classDef db fill:#eff6ff,stroke:#1d4ed8,stroke-width:2.5px,color:#1e3a8a
+    classDef gate fill:#fee2e2,stroke:#b91c1c,stroke-width:3px,color:#7f1d1d
+    classDef eco fill:#fdf4ff,stroke:#a21caf,stroke-width:2px,color:#701a75
+
+    class SIG,CAND,SCORED,SRC,DRAFTS,BRIEFS,PUB,METRICS,LOG db
+    class UI gate
+    class ECO_A,ECO_B eco
 ```
 
 ---

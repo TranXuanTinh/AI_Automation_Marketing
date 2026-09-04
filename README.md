@@ -5,6 +5,9 @@
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-UNLICENSED-red.svg)](LICENSE)
 [![Safety Protocol](https://img.shields.io/badge/hallucination_check-enforced-gold.svg)](docs/METHODOLOGY.md)
+[![Project Progress](https://img.shields.io/badge/progress-81%25%20completed-blue.svg)](PROJECT_SCHEDULE_AND_PROGRESS.md)
+
+> 📌 **Project Progress & Estimated Hours Tracker:** See details in [`PROJECT_SCHEDULE_AND_PROGRESS.md`](PROJECT_SCHEDULE_AND_PROGRESS.md).
 
 ---
 
