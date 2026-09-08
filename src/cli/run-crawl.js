@@ -20,8 +20,8 @@ import { scanReddit } from '../listeners/reddit-scanner.js';
 import { scanYouTube } from '../listeners/youtube-scanner.js';
 
 async function main() {
-  const geminiApiKey = process.env.OPENAI_API_KEY || process.env.CHATGPT_API_KEY || process.env.GEMINI_API_KEY || process.env.XFTOKEN_API_KEY;
-  if (!geminiApiKey) {
+  const aiApiKey = process.env.OPENAI_API_KEY || process.env.CHATGPT_API_KEY || process.env.GEMINI_API_KEY || process.env.XFTOKEN_API_KEY;
+  if (!aiApiKey) {
     console.error('❌ Error: OPENAI_API_KEY, GEMINI_API_KEY, or XFTOKEN_API_KEY environment variable is required.');
     process.exit(1);
   }
@@ -63,12 +63,12 @@ async function main() {
 
   switch (command) {
     case 'all':
-      await runAllListeners(geminiApiKey);
+      await runAllListeners(aiApiKey);
       break;
 
     case 'google':
       console.log('\n[CRW] Scanning Google PAA with real web scraping...');
-      await scanGooglePAA(geminiApiKey);
+      await scanGooglePAA(aiApiKey);
       break;
 
     case 'reddit':
@@ -78,7 +78,7 @@ async function main() {
 
     case 'youtube':
       console.log('\n[CRW] Scanning YouTube with web search...');
-      await scanYouTube(geminiApiKey, process.env.YOUTUBE_API_KEY);
+      await scanYouTube(aiApiKey, process.env.YOUTUBE_API_KEY);
       break;
 
     case 'search':
@@ -130,15 +130,15 @@ Commands:
   }
 }
 
-async function runAllListeners(geminiApiKey) {
+async function runAllListeners(aiApiKey) {
   console.log('\n[1/3] 🔍 Scanning Google PAA with CRW web search...');
-  await scanGooglePAA(geminiApiKey);
+  await scanGooglePAA(aiApiKey);
 
   console.log('\n[2/3] 📱 Scanning Reddit with CRW enrichment...');
   await scanReddit();
 
   console.log('\n[3/3] 🎬 Scanning YouTube with CRW web search...');
-  await scanYouTube(geminiApiKey, process.env.YOUTUBE_API_KEY);
+  await scanYouTube(aiApiKey, process.env.YOUTUBE_API_KEY);
 
   console.log('\n✅ CRW-powered listening complete! Demand signals captured in database.');
   console.log('Next step: run `npm run research` to process signals into ranked topics.');

@@ -79,7 +79,7 @@ async function scanGooglePAAWithCRW(apiKey, crw, clusterIds = null) {
 
     if (!allSearchContent.trim()) {
       console.warn(`  ⚠ No CRW search results for ${cluster.name}, falling back to AI synthesis for this cluster.`);
-      const fallbackQuestions = await scanClusterWithGemini(ai, cluster);
+      const fallbackQuestions = await scanClusterWithAI(ai, cluster);
       for (const q of fallbackQuestions) {
         const signal = {
           source: 'google_paa',
@@ -126,7 +126,7 @@ IMPORTANT: Only extract questions that are actually present or strongly implied 
     try {
       questions = JSON.parse(response.text);
     } catch {
-      console.warn(`  ⚠ Failed to parse CRW+Gemini PAA response for ${cluster.name}, skipping.`);
+      console.warn(`  ⚠ Failed to parse CRW+AI PAA response for ${cluster.name}, skipping.`);
       continue;
     }
 
@@ -154,13 +154,14 @@ IMPORTANT: Only extract questions that are actually present or strongly implied 
 /**
  * Helper to scan a single cluster with AI synthesis
  */
-async function scanClusterWithGemini(ai, cluster) {
+async function scanClusterWithAI(ai, cluster) {
   const symptoms = SYMPTOM_MAP[cluster.id] || [];
   const symptomList = symptoms.map(s => `"why do I ${s}"`).join(', ');
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: `Based on your knowledge of Google search patterns and People Also Ask boxes, generate a list of 8–12 real questions that people commonly ask about "${cluster.name}" in the context of therapy and counselling.
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Based on your knowledge of Google search patterns and People Also Ask boxes, generate a list of 8–12 real questions that people commonly ask about "${cluster.name}" in the context of therapy and counselling.
 
 Focus on questions that appear in:
 1. Google's "People Also Ask" sections
@@ -177,27 +178,30 @@ For each question, provide:
 Format as JSON array with objects: { "question": "...", "category": "...", "engagement": "..." }
 
 IMPORTANT: Only include questions you have high confidence actually appear in Google search results. Do NOT invent questions.`,
-    config: {
-      systemInstruction: getSystemPrompt('You are analyzing Google search patterns for content opportunity research.'),
-      responseMimeType: 'application/json',
-    },
-  });
+      config: {
+        systemInstruction: getSystemPrompt('You are analyzing Google search patterns for content opportunity research.'),
+        responseMimeType: 'application/json',
+      },
+    });
 
-  try {
     return JSON.parse(response.text);
-  } catch {
-    console.warn(`Failed to parse PAA response for ${cluster.name}, skipping.`);
-    return [];
+  } catch (err) {
+    console.warn(`  ⚠️ AI PAA generation unavailable for "${cluster.name}" (${err.message}) — using symptom-based fallback questions`);
+    return symptoms.map(s => ({
+      question: `Why do I ${s}?`,
+      category: 'symptoms',
+      engagement: 'high',
+    }));
   }
 }
 
 /**
- * FALLBACK: Uses Gemini to simulate PAA/autocomplete discovery for a topic cluster.
+ * FALLBACK: Uses AI to simulate PAA/autocomplete discovery for a topic cluster.
  * Since we can't directly scrape Google programmatically without a SERP API,
- * we use Gemini to generate realistic PAA questions based on actual search patterns,
+ * we use AI to generate realistic PAA questions based on actual search patterns,
  * then flag them for manual verification.
  */
-async function scanGooglePAAWithGemini(apiKey, clusterIds = null) {
+async function scanGooglePAAWithAI(apiKey, clusterIds = null) {
   const ai = createAIClient(apiKey);
   const clusters = clusterIds
     ? TOPIC_CLUSTERS.filter(c => clusterIds.includes(c.id))
@@ -206,7 +210,7 @@ async function scanGooglePAAWithGemini(apiKey, clusterIds = null) {
   const results = [];
 
   for (const cluster of clusters) {
-    const questions = await scanClusterWithGemini(ai, cluster);
+    const questions = await scanClusterWithAI(ai, cluster);
 
     for (const q of questions) {
       const signal = {
@@ -223,7 +227,7 @@ async function scanGooglePAAWithGemini(apiKey, clusterIds = null) {
       results.push({ ...signal, id: result.lastInsertRowid });
     }
 
-    console.log(`  ✓ ${cluster.name}: ${questions.length} PAA signals captured (Gemini)`);
+    console.log(`  ✓ ${cluster.name}: ${questions.length} PAA signals captured (${ai.providerName || 'AI'})`);
   }
 
   return results;
@@ -231,14 +235,15 @@ async function scanGooglePAAWithGemini(apiKey, clusterIds = null) {
 
 /**
  * Main entry point for Google PAA scanning.
- * Auto-detects CRW availability and falls back to Gemini-only mode.
+ * Auto-detects CRW availability and falls back to AI mode.
  *
- * @param {string} apiKey - Gemini API key
+ * @param {string} apiKey - AI API key
  * @param {string[]} [clusterIds] - Optional filter for specific clusters
  * @returns {Promise<Array>} - Captured demand signals
  */
 export async function scanGooglePAA(apiKey, clusterIds = null) {
   const crw = createCRWClientFromEnv();
+  const ai = createAIClient(apiKey);
 
   if (crw && await crw.isAvailable()) {
     const searchReady = await crw.isSearchAvailable();
@@ -246,13 +251,13 @@ export async function scanGooglePAA(apiKey, clusterIds = null) {
       console.log('  🔗 CRW detected — using real Google search scraping');
       return scanGooglePAAWithCRW(apiKey, crw, clusterIds);
     } else {
-      console.log('  🔗 CRW connected (scraping active, search cloud-only) — using AI PAA synthesis');
-      return scanGooglePAAWithGemini(apiKey, clusterIds);
+      console.log(`  🔗 CRW connected (scraping active, search cloud-only) — using ${ai.providerName || 'AI'} PAA synthesis`);
+      return scanGooglePAAWithAI(apiKey, clusterIds);
     }
   }
 
-  console.log('  📡 CRW not available — using Gemini-simulated PAA (set CRW_BASE_URL for real scraping)');
-  return scanGooglePAAWithGemini(apiKey, clusterIds);
+  console.log(`  📡 CRW not available — using ${ai.providerName || 'AI'}-simulated PAA (set CRW_BASE_URL for real scraping)`);
+  return scanGooglePAAWithAI(apiKey, clusterIds);
 }
 
 export default { scanGooglePAA };

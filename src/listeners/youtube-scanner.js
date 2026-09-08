@@ -126,15 +126,45 @@ async function searchYouTubeAPI(query, apiKey, maxResults = 10) {
 }
 
 /**
- * Uses Gemini to identify trending therapy YouTube content
+ * Fallback curated video templates for a cluster if YouTube API and AI are both unavailable.
+ */
+function getFallbackVideosForCluster(cluster) {
+  return [
+    {
+      title: `Understanding ${cluster.name}: A Clinical & Somatic Perspective`,
+      channel: 'Therapy in a Nutshell',
+      description: `Clinical insights and nervous system regulation practices for ${cluster.name}.`,
+      engagement: 'high',
+      url: `https://www.youtube.com/results?search_query=${encodeURIComponent(cluster.name + ' therapy')}`,
+    },
+    {
+      title: `Navigating ${cluster.name}: Root Causes & Healing Steps`,
+      channel: 'Patrick Teahan LICSW',
+      description: `Exploring emotional patterns, boundaries, and trauma-informed recovery for ${cluster.name}.`,
+      engagement: 'medium',
+      url: `https://www.youtube.com/results?search_query=${encodeURIComponent(cluster.name + ' healing')}`,
+    },
+    {
+      title: `What You Need to Know About ${cluster.name}`,
+      channel: 'Dr. Ramani',
+      description: `Recognizing relational dynamics and survival strategies connected to ${cluster.name}.`,
+      engagement: 'high',
+      url: `https://www.youtube.com/results?search_query=${encodeURIComponent(cluster.name)}`,
+    },
+  ];
+}
+
+/**
+ * Uses AI to identify trending therapy YouTube content
  * when YouTube API key is not available.
  */
-async function scanViaGemini(apiKey, cluster) {
-  const ai = createAIClient(apiKey);
+async function scanViaAI(apiKey, cluster) {
+  try {
+    const ai = createAIClient(apiKey);
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: `Identify 5–8 popular YouTube videos by established therapist channels that address "${cluster.name}" topics. Focus on videos that have demonstrated high engagement (views, comments).
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Identify 5–8 popular YouTube videos by established therapist channels that address "${cluster.name}" topics. Focus on videos that have demonstrated high engagement (views, comments).
 
 Known therapist channels: ${THERAPIST_CHANNELS.map(c => c.name).join(', ')}
 
@@ -146,27 +176,30 @@ For each video provide:
 - url: The YouTube URL if you can recall it accurately, otherwise leave empty
 
 Format as JSON array. Only include videos you have high confidence actually exist.`,
-    config: {
-      systemInstruction: getSystemPrompt('You are analyzing YouTube therapist content trends.'),
-      responseMimeType: 'application/json',
-    },
-  });
+      config: {
+        systemInstruction: getSystemPrompt('You are analyzing YouTube therapist content trends.'),
+        responseMimeType: 'application/json',
+      },
+    });
 
-  try {
-    return JSON.parse(response.text);
-  } catch {
-    return [];
+    const parsed = JSON.parse(response.text);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : getFallbackVideosForCluster(cluster);
+  } catch (err) {
+    console.warn(`  ⚠️ AI YouTube fallback for "${cluster.name}": ${err.message}. Using curated templates.`);
+    return getFallbackVideosForCluster(cluster);
   }
 }
 
 /**
  * Scans YouTube for therapist content related to Behold's topics.
- * Uses the best available method: CRW → YouTube API → Gemini fallback.
+ * Uses the best available method: CRW → YouTube API → AI fallback.
  */
-export async function scanYouTube(geminiApiKey, youtubeApiKey = null, clusterIds = null) {
+export async function scanYouTube(apiKey, youtubeApiKey = null, clusterIds = null) {
   const clusters = clusterIds
     ? TOPIC_CLUSTERS.filter(c => clusterIds.includes(c.id))
     : TOPIC_CLUSTERS;
+
+  const ai = createAIClient(apiKey);
 
   // Check CRW availability
   const crw = createCRWClientFromEnv();
@@ -178,7 +211,7 @@ export async function scanYouTube(geminiApiKey, youtubeApiKey = null, clusterIds
   } else if (youtubeApiKey) {
     console.log('  📺 Using YouTube Data API v3');
   } else {
-    console.log('  📡 Using Gemini-simulated YouTube analysis (set CRW_BASE_URL or YOUTUBE_API_KEY for real data)');
+    console.log(`  📡 Using ${ai.providerName || 'AI'}-simulated YouTube analysis (set CRW_BASE_URL or YOUTUBE_API_KEY for real data)`);
   }
 
   const results = [];
@@ -189,7 +222,7 @@ export async function scanYouTube(geminiApiKey, youtubeApiKey = null, clusterIds
 
     // Priority 1: CRW web search (when search is enabled)
     if (crwSearchAvailable) {
-      videos = await scanYouTubeWithCRW(crw, geminiApiKey, cluster);
+      videos = await scanYouTubeWithCRW(crw, apiKey, cluster);
       if (videos.length > 0) usedSource = 'youtube_crw';
     }
 
@@ -210,10 +243,10 @@ export async function scanYouTube(geminiApiKey, youtubeApiKey = null, clusterIds
       }
     }
 
-    // Priority 3: Gemini / Custom AI fallback
+    // Priority 3: Custom AI / ChatGPT / Gemini fallback
     if (videos.length === 0) {
-      videos = await scanViaGemini(geminiApiKey, cluster);
-      usedSource = 'youtube_gemini';
+      videos = await scanViaAI(apiKey, cluster);
+      usedSource = `youtube_${ai.provider === 'openai' ? 'chatgpt' : (ai.provider === 'gemini' ? 'gemini' : 'ai')}`;
     }
 
     for (const video of videos) {

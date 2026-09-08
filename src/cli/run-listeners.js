@@ -12,6 +12,7 @@ import { scanGooglePAA } from '../listeners/google-paa.js';
 import { scanReddit } from '../listeners/reddit-scanner.js';
 import { scanYouTube } from '../listeners/youtube-scanner.js';
 import { isCRWConfigured, createCRWClientFromEnv } from '../crawlers/crw-client.js';
+import { getAIConfig } from '../config/ai-client.js';
 
 async function main() {
   const apiKey = process.env.OPENAI_API_KEY || process.env.CHATGPT_API_KEY || process.env.GEMINI_API_KEY || process.env.XFTOKEN_API_KEY;
@@ -19,6 +20,8 @@ async function main() {
     console.error('❌ Error: OPENAI_API_KEY, GEMINI_API_KEY, or XFTOKEN_API_KEY environment variable is required.');
     process.exit(1);
   }
+
+  const aiConfig = getAIConfig(apiKey);
 
   console.log('====================================================');
   console.log('🎧 BEHOLD AI CONTENT SYSTEM: STAGE 1 (LISTEN)');
@@ -33,11 +36,11 @@ async function main() {
       console.log(`\n🔗 CRW Web Scraper: CONNECTED (${config.baseUrl})`);
       console.log('   → Listeners will use real web scraping for enhanced results');
     } else {
-      console.log('\n⚠️  CRW configured but not reachable — falling back to Gemini mode');
+      console.log(`\n⚠️  CRW configured but not reachable — falling back to ${aiConfig.providerName || 'AI'} mode`);
       console.log('   Start CRW: npm run crw (or crw serve --port 3002)');
     }
   } else {
-    console.log('\nℹ️  CRW not configured — using Gemini-simulated scanning');
+    console.log(`\nℹ️  CRW not configured — using ${aiConfig.providerName || 'AI'}-simulated scanning`);
     console.log('   Install CRW for real web scraping: curl -fsSL https://fastcrw.com/install | sh');
   }
 

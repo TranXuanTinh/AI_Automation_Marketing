@@ -49,12 +49,24 @@ export function getAIConfig(explicitApiKey = null) {
 
   const isCustomEndpoint = !isGeminiKey || !!baseUrl;
 
+  let providerName = 'AI';
+  if (isOpenAIKey) {
+    providerName = 'ChatGPT';
+  } else if (isGeminiKey) {
+    providerName = 'Gemini';
+  } else if (baseUrl.includes('nvidia')) {
+    providerName = 'NVIDIA AI';
+  } else if (customKey) {
+    providerName = 'Custom AI';
+  }
+
   return {
     apiKey,
     baseUrl: baseUrl ? baseUrl.replace(/\/+$/, '') : '',
     model,
     isCustomEndpoint,
     isOpenAI: isOpenAIKey,
+    providerName,
   };
 }
 
@@ -79,7 +91,8 @@ export function createAIClient(explicitApiKey = null) {
       : defaultEndpoint;
 
     return {
-      provider: 'custom_openai',
+      provider: config.isOpenAI ? 'openai' : 'custom_openai',
+      providerName: config.providerName,
       model: config.model,
       baseUrl: endpoint,
       models: {
@@ -127,7 +140,7 @@ export function createAIClient(explicitApiKey = null) {
           let lastError = null;
           let response = null;
 
-          for (let attempt = 1; attempt <= 3; attempt++) {
+          for (let attempt = 1; attempt <= 4; attempt++) {
             try {
               response = await fetch(endpoint, {
                 method: 'POST',
@@ -136,7 +149,7 @@ export function createAIClient(explicitApiKey = null) {
                   'Authorization': `Bearer ${config.apiKey}`,
                 },
                 body: JSON.stringify(requestBody),
-                signal: AbortSignal.timeout(120000),
+                signal: AbortSignal.timeout(180000),
               });
 
               if (response.ok) {
@@ -147,9 +160,9 @@ export function createAIClient(explicitApiKey = null) {
               lastError = new Error(`AI API request to ${endpoint} failed (${response.status}): ${errText}`);
 
               // If rate limited or server error (500, 502, 503), retry after backoff
-              if ([429, 500, 502, 503, 504].includes(response.status) && attempt < 3) {
-                const backoffMs = attempt * 2000;
-                console.warn(`  ⚠️ AI API returned ${response.status}. Retrying in ${backoffMs / 1000}s (attempt ${attempt}/3)...`);
+              if ([429, 500, 502, 503, 504].includes(response.status) && attempt < 4) {
+                const backoffMs = attempt * 3000;
+                console.warn(`  ⚠️ AI API returned ${response.status}. Retrying in ${backoffMs / 1000}s (attempt ${attempt}/4)...`);
                 await new Promise(r => setTimeout(r, backoffMs));
                 continue;
               }
@@ -157,9 +170,9 @@ export function createAIClient(explicitApiKey = null) {
               throw lastError;
             } catch (err) {
               lastError = err;
-              if (attempt < 3 && !err.message.includes('410')) {
-                const backoffMs = attempt * 2000;
-                console.warn(`  ⚠️ AI API network error: ${err.message}. Retrying in ${backoffMs / 1000}s (attempt ${attempt}/3)...`);
+              if (attempt < 4 && !err.message.includes('410')) {
+                const backoffMs = attempt * 3000;
+                console.warn(`  ⚠️ AI API network error: ${err.message}. Retrying in ${backoffMs / 1000}s (attempt ${attempt}/4)...`);
                 await new Promise(r => setTimeout(r, backoffMs));
                 continue;
               }
@@ -211,6 +224,7 @@ export function createAIClient(explicitApiKey = null) {
   const googleAI = new GoogleGenAI({ apiKey: config.apiKey });
   return {
     provider: 'gemini',
+    providerName: 'Gemini',
     model: config.model,
     models: {
       async generateContent(options) {
