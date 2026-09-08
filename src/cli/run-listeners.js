@@ -14,9 +14,9 @@ import { scanYouTube } from '../listeners/youtube-scanner.js';
 import { isCRWConfigured, createCRWClientFromEnv } from '../crawlers/crw-client.js';
 
 async function main() {
-  const apiKey = process.env.XFTOKEN_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY || process.env.CHATGPT_API_KEY || process.env.GEMINI_API_KEY || process.env.XFTOKEN_API_KEY;
   if (!apiKey) {
-    console.error('❌ Error: XFTOKEN_API_KEY or GEMINI_API_KEY environment variable is required.');
+    console.error('❌ Error: OPENAI_API_KEY, GEMINI_API_KEY, or XFTOKEN_API_KEY environment variable is required.');
     process.exit(1);
   }
 
@@ -34,7 +34,7 @@ async function main() {
       console.log('   → Listeners will use real web scraping for enhanced results');
     } else {
       console.log('\n⚠️  CRW configured but not reachable — falling back to Gemini mode');
-      console.log('   Start CRW: crw (or check CRW_BASE_URL in .env)');
+      console.log('   Start CRW: npm run crw (or crw serve --port 3002)');
     }
   } else {
     console.log('\nℹ️  CRW not configured — using Gemini-simulated scanning');

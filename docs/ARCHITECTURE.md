@@ -9,6 +9,12 @@ This document provides the technical architecture, data structures, state machin
 
 The system follows a **Human-in-the-Loop (HITL) Event-Driven Pipeline** divided into 4 sequential stages with continuous feedback loops.
 
+### Master Architecture Diagram
+![Behold System Architecture](architecture.png)
+
+<details>
+<summary><b>View Interactive Mermaid Source Diagram</b></summary>
+
 ```mermaid
 graph TD
     subgraph CRW_LAYER["⚙️ CRW Web Scraper Layer (Self-hosted / Cloud)"]
@@ -19,7 +25,7 @@ graph TD
     end
 
     subgraph STAGE_1["📡 Stage 1: Audience Listening Engine"]
-        L1["<b>Google PAA Scanner</b><br/><i>(CRW search + Gemini fallback)</i>"] --> SIG[(\"<b>demand_signals</b><br/><i>(Raw Signals Table)</i>\")]
+        L1["<b>Google PAA Scanner</b><br/><i>(CRW search + Gemini fallback)</i>"] --> SIG[("<b>demand_signals</b><br/><i>(Raw Signals Table)</i>")]
         L2["<b>Reddit JSON Scanner</b><br/><i>(CRW enrichment)</i>"] --> SIG
         L3["<b>YouTube Scanner</b><br/><i>(CRW + YT API + Gemini)</i>"] --> SIG
         L4["<b>Yiya FAQ Dashboard Form</b>"] --> SIG
@@ -27,14 +33,14 @@ graph TD
 
     subgraph STAGE_2["🔬 Stage 2: AI Research & Clinical Formulation"]
         SIG --> TC["<b>Topic Collector</b><br/><i>(Cluster Batching)</i>"]
-        TC --> CAND[(\"<b>topic_candidates</b>\")]
+        TC --> CAND[("<b>topic_candidates</b>")]
         CAND --> TS["<b>Topic Scorer</b><br/><i>(25-Point Matrix)</i>"]
-        TS --> SCORED[(\"<b>scored_topics</b>\")]
+        TS --> SCORED[("scored_topics")]
         SCORED --> EM["<b>Evidence Mapper</b><br/><i>(PubMed DOI + ISBN)</i>"]
-        EM --> SRC[(\"<b>sources & evidence_maps</b>\")]
+        EM --> SRC[("sources & evidence_maps")]
         SCORED --> CD["<b>Content Drafter</b><br/><i>(Psychoeducation & FAQ)</i>"]
         SRC --> CD
-        CD --> DRAFTS[(\"<b>content_drafts</b><br/><i>(Status: review)</i>\")]
+        CD --> DRAFTS[("<b>content_drafts</b><br/><i>(Status: review)</i>")]
     end
 
     subgraph STAGE_3["🛡️ Stage 3: Clinical Gate & Multi-Channel Distribution"]
@@ -42,17 +48,17 @@ graph TD
         UI -- Reject / Revise --> DRAFTS
         UI -- Approved --> SBG["<b>Social & Visual Brief Generator</b><br/><i>(Infographics, Quotes, Reels)</i>"]
         UI -- Approved --> UTM["<b>UTM Linker & Publisher</b>"]
-        SBG --> BRIEFS[(\"<b>production_briefs</b>\")]
-        UTM --> PUB[(\"<b>published_content</b>\")]
+        SBG --> BRIEFS[("production_briefs")]
+        UTM --> PUB[("published_content")]
         PUB --> ECO_A["<b>3A. Yiya Ecosystem</b><br/><i>(Pinterest, Substack, IG)</i>"]
         PUB --> ECO_B["<b>3B. Behold Ecosystem</b><br/><i>(Blog, LinkedIn, PsychToday)</i>"]
     end
 
     subgraph STAGE_4["📈 Stage 4: Performance Monitoring & System Memory"]
         PUB --> CRON["<b>Cron Audit Engine</b><br/><i>(1, 7, 30 Days)</i>"]
-        CRON --> METRICS[(\"<b>performance_metrics</b>\")]
+        CRON --> METRICS[("performance_metrics")]
         METRICS --> LEARN["<b>Learning Engine</b><br/><i>(Repeat / Improve / Stop)</i>"]
-        LEARN --> LOG[(\"<b>learning_log</b>\")]
+        LEARN --> LOG[("learning_log")]
         LOG -. Continuous Feedback .-> TC
     end
 
@@ -78,6 +84,7 @@ graph TD
     class UI gate
     class ECO_A,ECO_B eco
 ```
+</details>
 
 ---
 

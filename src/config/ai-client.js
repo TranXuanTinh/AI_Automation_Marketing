@@ -19,12 +19,14 @@ import { GoogleGenAI } from '@google/genai';
  */
 export function getAIConfig(explicitApiKey = null) {
   const geminiKey = process.env.GEMINI_API_KEY?.trim() || '';
-  const customKey = process.env.XFTOKEN_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || '';
+  const openaiKey = process.env.OPENAI_API_KEY?.trim() || process.env.CHATGPT_API_KEY?.trim() || '';
+  const customKey = process.env.XFTOKEN_API_KEY?.trim() || '';
 
-  // Determine active key
-  let apiKey = explicitApiKey || geminiKey || customKey || '';
+  // Determine active key (explicit > OpenAI/ChatGPT > Gemini > Custom XFTOKEN)
+  let apiKey = explicitApiKey || openaiKey || geminiKey || customKey || '';
 
   const isGeminiKey = apiKey.startsWith('AIzaSy');
+  const isOpenAIKey = apiKey.startsWith('sk-') || (!!openaiKey && apiKey === openaiKey);
 
   let baseUrl = '';
   let model = '';
@@ -33,12 +35,16 @@ export function getAIConfig(explicitApiKey = null) {
     // Official Google Gemini Mode
     baseUrl = process.env.GEMINI_BASE_URL?.trim() || '';
     model = process.env.LLM_MODEL || 'gemini-2.5-flash';
+  } else if (isOpenAIKey) {
+    // Official OpenAI / ChatGPT Mode
+    baseUrl = process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1';
+    model = process.env.OPENAI_MODEL || process.env.LLM_MODEL || 'gpt-4o-mini';
   } else {
-    // Custom OpenAI / NVIDIA NIM Mode
+    // Custom OpenAI / NVIDIA NIM / Self-hosted Mode
     baseUrl = process.env.XFTOKEN_BASE_URL?.trim() || process.env.OPENAI_BASE_URL?.trim() || '';
     model = process.env.LLM_MODEL ||
       process.env.XFTOKEN_MODEL ||
-      (baseUrl.includes('nvidia') ? 'meta/llama-3.2-11b-vision-instruct' : 'gemini-2.5-flash');
+      (baseUrl.includes('nvidia') ? 'meta/llama-3.2-11b-vision-instruct' : 'gpt-4o-mini');
   }
 
   const isCustomEndpoint = !isGeminiKey || !!baseUrl;
@@ -48,6 +54,7 @@ export function getAIConfig(explicitApiKey = null) {
     baseUrl: baseUrl ? baseUrl.replace(/\/+$/, '') : '',
     model,
     isCustomEndpoint,
+    isOpenAI: isOpenAIKey,
   };
 }
 
@@ -58,14 +65,18 @@ export function createAIClient(explicitApiKey = null) {
   const config = getAIConfig(explicitApiKey);
 
   if (!config.apiKey) {
-    throw new Error('No AI API Key found. Please set XFTOKEN_API_KEY or GEMINI_API_KEY in .env');
+    throw new Error('No AI API Key found. Please set OPENAI_API_KEY (ChatGPT), GEMINI_API_KEY, or XFTOKEN_API_KEY in .env');
   }
 
-  // ── Mode 1: Custom / OpenAI-Compatible Endpoint (NVIDIA NIM, XFTOKEN, Ollama, DeepSeek, etc.) ──
+  // ── Mode 1: Custom / OpenAI-Compatible Endpoint (OpenAI ChatGPT, NVIDIA NIM, XFTOKEN, Ollama, DeepSeek, etc.) ──
   if (config.isCustomEndpoint) {
+    const defaultEndpoint = config.isOpenAI
+      ? 'https://api.openai.com/v1/chat/completions'
+      : 'https://integrate.api.nvidia.com/v1/chat/completions';
+
     const endpoint = config.baseUrl
       ? (config.baseUrl.endsWith('/chat/completions') ? config.baseUrl : `${config.baseUrl}/chat/completions`)
-      : 'https://integrate.api.nvidia.com/v1/chat/completions';
+      : defaultEndpoint;
 
     return {
       provider: 'custom_openai',

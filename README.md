@@ -23,6 +23,11 @@ Unlike generic SEO content generators, this system is built on **clinical precis
 
 The architecture mirrors the 4-stage pipeline shown in the master design:
 
+![Behold AI-First Content System Architecture](docs/architecture.png)
+
+<details>
+<summary><b>View Interactive Mermaid Flowchart</b></summary>
+
 ```mermaid
 flowchart TD
     subgraph S1["1. LISTEN FOR AUDIENCE"]
@@ -38,7 +43,7 @@ flowchart TD
         B1 --> B2["02 Score Topics by 25-Pt Matrix"]
         B2 --> B3["03 Build Verified Evidence Map"]
         B3 --> B4["04 Draft Article, FAQ & SEO Metadata"]
-        B3 -.-> SL[("SOURCE LIBRARY\nVerified DOIs & ISBNs")]
+        B3 -.-> SL[("SOURCE LIBRARY<br/>Verified DOIs & ISBNs")]
     end
 
     subgraph S3["3. HUMAN GATE + PUBLISH"]
@@ -61,6 +66,7 @@ flowchart TD
     classDef stage fill:#15221e,stroke:#c4a35a,stroke-width:1.5px,color:#f3efe6;
     class S1,S2,S3,S4 stage;
 ```
+</details>
 
 ---
 
@@ -68,7 +74,10 @@ flowchart TD
 
 ### Prerequisites
 - **Node.js** >= 18.0.0
-- **Gemini API Key** (from [Google AI Studio](https://aistudio.google.com/))
+- **AI API Key** (Choose one of the following):
+  - **ChatGPT / OpenAI API Key** *(Recommended)*: Get key from [OpenAI Platform](https://platform.openai.com/api-keys)
+  - **Google Gemini API Key**: Get key from [Google AI Studio](https://aistudio.google.com/)
+  - **Custom OpenAI-compatible Endpoint**: NVIDIA NIM, DeepSeek, Ollama, etc.
 - **CRW Web Scraper** *(optional but recommended)* — for real-time web scraping
   ```bash
   # Self-hosted install (free, no API key needed)
@@ -86,13 +95,19 @@ npm install
 ```
 
 ### 2. Environment Configuration
-Copy the example environment file and add your Gemini API key:
+Copy the example environment file and add your AI API key:
 ```bash
 cp .env.example .env
 ```
 Edit `.env`:
 ```env
-GEMINI_API_KEY=your_actual_gemini_api_key_here
+# Option 1: ChatGPT / OpenAI (Recommended)
+OPENAI_API_KEY=sk-proj-...your_actual_openai_key_here
+OPENAI_MODEL=gpt-4o-mini
+
+# Option 2: Google Gemini (Alternative)
+# GEMINI_API_KEY=your_actual_gemini_api_key_here
+
 PORT=3000
 ```
 
@@ -119,6 +134,7 @@ You can run each stage independently via CLI or automate them on a cron schedule
 | `npm run listen` | **Stage 1:** Scans Google PAA, Reddit (r/CPTSD, r/IFS, etc.), and YouTube for audience questions. Auto-detects CRW for real web scraping. |
 | `npm run research` | **Stage 2:** Groups signals, scores topics on 25-pt matrix, builds evidence maps, and drafts articles. |
 | `npm run crawl` | **CRW Mode:** Runs CRW-powered web scraping for all listeners. Supports sub-commands: `google`, `reddit`, `youtube`, `search`, `scrape`, `crawl`, `academic`. |
+| `npm run crw` | **CRW Server:** Starts the local CRW scraper REST API daemon on port 3002. |
 | `npm run seed` | Seeds SQLite database with verified Beta 1 research data. |
 | `npm start` | Launches Express server and the web dashboard for Yiya's review. |
 | `npm run dev` | Starts server in watch mode for development. |
@@ -129,18 +145,19 @@ You can run each stage independently via CLI or automate them on a cron schedule
 
 ```
 .
-├── BEHOLD_BETA1_MASTER_PROMPT.md  # Master operational guidelines & system prompt
-├── BEHOLD_BETA1_RESEARCH_REPORT.md # Completed research report (manual prototype)
-├── First Task.md                  # Project glossary, metrics & psychology profile
-├── package.json                   # Project scripts & dependencies
-├── server.js                      # Express API server & cron scheduler
-├── .env.example                   # Environment configuration template
+├── BEHOLD_BETA1_MASTER_PROMPT.md        # Master operational guidelines & system prompt
+├── BEHOLD_FINAL_RESEARCH_DELIVERABLE.md # Completed research report & evidence deliverables
+├── First Task.md                        # Project glossary, metrics & psychology profile
+├── package.json                         # Project scripts & dependencies
+├── server.js                            # Express API server & cron scheduler
+├── .env.example                         # Environment configuration template
 │
-├── docs/                          # Comprehensive Documentation
-│   ├── ARCHITECTURE.md            # In-depth system architecture & data models
-│   ├── SETUP_GUIDE.md             # Complete step-by-step setup & troubleshooting
-│   ├── METHODOLOGY.md             # Research SOP, scoring matrix & anti-hallucination protocols
-│   └── CRW_INTEGRATION.md        # CRW web scraper integration guide
+├── docs/                                # Comprehensive Documentation
+│   ├── ARCHITECTURE.md                  # In-depth system architecture & data models
+│   ├── architecture.png                 # Master system architecture diagram (HD)
+│   ├── SETUP_GUIDE.md                   # Complete step-by-step setup & troubleshooting
+│   ├── METHODOLOGY.md                   # Research SOP, scoring matrix & anti-hallucination protocols
+│   └── CRW_INTEGRATION.md               # CRW web scraper integration guide
 │
 ├── src/
 │   ├── config/

@@ -1,7 +1,7 @@
 # Setup & Operations Guide
 > **Behold AI-First Content System: Step-by-Step Installation and Execution**
 
-This guide provides complete instructions on configuring environment variables, running research cycles, managing the clinical review gate, and deploying the web application.
+This guide provides complete instructions on configuring environment variables (including **ChatGPT / OpenAI API Key** and **Google Gemini**), running research cycles, managing the clinical review gate, and deploying the web application.
 
 ---
 
@@ -11,17 +11,39 @@ This guide provides complete instructions on configuring environment variables, 
 - **Node.js**: `v18.0.0` or higher
 - **NPM**: `v9.0.0` or higher
 - **Disk Space**: ~100MB (SQLite database creates locally in `./data/behold.db`)
+- **AI API Key**: OpenAI ChatGPT API key *(Recommended)* or Google Gemini API key
 - **CRW Web Scraper** *(optional)*: For real-time web scraping (self-hosted or cloud)
-
-### Obtaining Your Gemini API Key
-1. Go to [Google AI Studio](https://aistudio.google.com/).
-2. Sign in with your Google account.
-3. Click **"Get API Key"** $\rightarrow$ **"Create API Key"**.
-4. Copy the API key and store it securely.
 
 ---
 
-## 2. Installation & Configuration
+## 2. Obtaining Your AI API Key
+
+The Behold system supports **3 flexible AI providers** through an intelligent auto-detecting client adapter. You only need **one** API key:
+
+### Option A: ChatGPT / OpenAI API Key (Recommended)
+1. Visit the [OpenAI API Platform](https://platform.openai.com/).
+2. Sign in or create an OpenAI account.
+3. Navigate to **[API Keys](https://platform.openai.com/api-keys)**.
+4. Click **"+ Create new secret key"**.
+5. Give your key a descriptive name (e.g., `Behold-Content-System`).
+6. Click **"Create secret key"** and copy the key (format: `sk-proj-...` or `sk-...`).
+7. Ensure your OpenAI account has an active credit balance in **[Billing Settings](https://platform.openai.com/settings/billing)** (even a $5 credit provides thousands of research queries with `gpt-4o-mini`).
+
+> 💡 **Recommended Model:** The system defaults to **`gpt-4o-mini`**, which provides exceptional speed, minimal cost, and outstanding trauma-informed reasoning. If you prefer deeper synthesis, set `OPENAI_MODEL=gpt-4o` in `.env`.
+
+### Option B: Google Gemini API Key
+1. Go to [Google AI Studio](https://aistudio.google.com/).
+2. Sign in with your Google account.
+3. Click **"Get API Key"** $\rightarrow$ **"Create API Key"**.
+4. Copy the API key (format: `AIzaSy...`).
+
+### Option C: Custom OpenAI-Compatible LLM (NVIDIA NIM, DeepSeek, Local Ollama)
+- If you use NVIDIA NIM, set `XFTOKEN_API_KEY=nvapi-...` and `XFTOKEN_BASE_URL=https://integrate.api.nvidia.com/v1`.
+- If you use a self-hosted Ollama or vLLM instance, provide `OPENAI_BASE_URL=http://localhost:11434/v1`.
+
+---
+
+## 3. Installation & Configuration
 
 ### Step 1: Clone or Navigate to the Workspace
 ```bash
@@ -39,20 +61,39 @@ Create your local `.env` file from the provided `.env.example`:
 cp .env.example .env
 ```
 
-Open `.env` and fill in your keys:
-```env
-# Required:
-GEMINI_API_KEY=AIzaSy...your_gemini_api_key_here
+Open `.env` and fill in your configuration:
 
-# Optional (for enhanced live YouTube searches):
+```env
+# ==============================================================================
+# 🤖 AI LLM PROVIDER CONFIGURATION (Choose Option 1 or Option 2)
+# ==============================================================================
+
+# Option 1: ChatGPT / OpenAI (Recommended)
+OPENAI_API_KEY=sk-proj-your_actual_openai_api_key_here
+OPENAI_MODEL=gpt-4o-mini
+
+# Option 2: Google Gemini (Alternative)
+# GEMINI_API_KEY=AIzaSy...your_gemini_api_key_here
+
+# ==============================================================================
+# 🎧 OPTIONAL: Enhanced Listeners
+# ==============================================================================
+# Optional YouTube Data API key for live search fallback
 YOUTUBE_API_KEY=
 
-# Optional: CRW Web Scraper (recommended for real web scraping)
-# Self-hosted: curl -fsSL https://fastcrw.com/install | sh
+# Reddit community scanner toggle (true = scan r/CPTSD, r/IFS; false = skip)
+ENABLE_REDDIT=false
+
+# ==============================================================================
+# 🕷️ OPTIONAL: CRW Web Scraper (https://fastcrw.com)
+# ==============================================================================
+# Self-hosted: curl -fsSL https://fastcrw.com/install | sh (runs on :3000 or :3002)
 CRW_BASE_URL=http://localhost:3000
 CRW_API_KEY=
 
-# Server Settings:
+# ==============================================================================
+# 🌐 Server Settings
+# ==============================================================================
 PORT=3000
 NODE_ENV=development
 ```
@@ -65,11 +106,12 @@ CRW enables real web scraping instead of AI-simulated data:
 # One-command install (macOS & Linux)
 curl -fsSL https://fastcrw.com/install | sh
 
-# Start CRW server (runs on http://localhost:3000 by default)
-crw
+# Start CRW server on port 3002 (tránh trùng port 3000 với dashboard)
+npm run crw
+# Hoặc: crw serve --port 3002
 ```
 
-> **Note:** If your Behold server also uses port 3000, either change the Behold `PORT` in `.env` to `3001`, or start CRW on a different port with `crw --port 3002` and set `CRW_BASE_URL=http://localhost:3002` in `.env`.
+> **Note:** Server web dashboard dùng port 3000, nên CRW được cấu hình chạy trên port 3002 (`CRW_BASE_URL=http://localhost:3002` trong `.env`).
 
 For cloud API (no binary to install):
 1. Register at [fastcrw.com/register](https://fastcrw.com/register) (1000 free credits)
@@ -79,7 +121,7 @@ See the full [CRW Integration Guide](CRW_INTEGRATION.md) for detailed documentat
 
 ---
 
-## 3. Running the System
+## 4. Running the System
 
 ### Option A: Complete End-to-End Workflow via CLI
 
@@ -87,13 +129,13 @@ See the full [CRW Integration Guide](CRW_INTEGRATION.md) for detailed documentat
    ```bash
    npm run seed
    ```
-   *Instantly loads the verified Beta 1 research findings into SQLite.*
+   *Instantly loads the verified Beta 1 research findings into SQLite without API calls.*
 
 2. **Run Audience Listening (Stage 1):**
    ```bash
    npm run listen
    ```
-   *Scans Google PAA trees, Reddit (r/CPTSD, r/IFS), and therapist YouTube channels.*
+   *Scans Google PAA trees, Reddit (r/CPTSD, r/IFS), and therapist YouTube channels using your configured AI provider (ChatGPT / Gemini).*
 
 3. **Run Topic Research, Scoring & Drafting (Stage 2):**
    ```bash
@@ -125,7 +167,7 @@ Navigate to **`http://localhost:3000`** to access all dashboard tabs:
 
 ---
 
-## 4. Production Deployment & Scheduling
+## 5. Production Deployment & Scheduling
 
 ### Running with Process Manager (PM2)
 To keep the server running continuously in production or on a VPS:
@@ -161,15 +203,16 @@ crontab -e
 
 ---
 
-## 5. Troubleshooting & Common Issues
+## 6. Troubleshooting & Common Issues
 
 | Issue | Cause | Resolution |
 |---|---|---|
-| `GEMINI_API_KEY is required` | Missing or blank `.env` key | Ensure `.env` exists and contains a valid `GEMINI_API_KEY`. |
-| `Cannot find module '@google/genai'` | Dependencies not installed | Run `npm install` to download all packages. |
-| `better-sqlite3 compilation error` | Missing C++ build tools on host OS | Install standard build tools: `sudo apt-get install build-essential python3` (Linux). |
-| `Port 3000 already in use` | Another process is using port 3000 | Set `PORT=3001` in `.env` or kill the running process. |
-| `CRW server is not reachable` | CRW binary not running | Start with `crw` command, or check `CRW_BASE_URL` in `.env`. |
-| `CRW not configured` | Missing CRW env vars | Add `CRW_BASE_URL=http://localhost:3000` to `.env`. |
-| `CRW configured but not reachable` | CRW server offline or wrong URL | Verify with `curl http://localhost:3000/health`. Start CRW: `crw`. |
-| Listeners still use Gemini mode | CRW health check fails | Ensure CRW is running and `CRW_BASE_URL` points to correct port. |
+| `No AI API Key found` | Missing or blank `.env` key | Ensure `.env` exists and contains either `OPENAI_API_KEY` or `GEMINI_API_KEY`. |
+| `AI API request failed (401): Incorrect API key` | Invalid or revoked OpenAI key | Check that `OPENAI_API_KEY` in `.env` matches your key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). |
+| `AI API request failed (429): You exceeded your current quota` | OpenAI account has zero credit balance | Add credit ($5 minimum) at [platform.openai.com/settings/billing](https://platform.openai.com/settings/billing). |
+| `Cannot find module '@google/genai'` | Dependencies not installed | Run `npm install` in the project root. |
+| `better-sqlite3 compilation error` | Missing C++ build tools on host OS | Install standard build tools: `sudo apt-get install build-essential python3` (Linux) or Xcode CLI tools (macOS). |
+| `Port 3000 already in use` | Another process is using port 3000 | Set `PORT=3001` in `.env` or terminate the conflicting process with `kill $(lsof -t -i:3000)`. |
+| `CRW server is not reachable` | CRW binary not running | Chạy `npm run crw` hoặc `crw serve --port 3002`. |
+| `CRW configured but not reachable` | CRW server offline or wrong URL | Verify with `curl http://localhost:3002/health`. Khởi động với `npm run crw`. |
+| Listeners still use AI mode | CRW health check fails | Ensure CRW is running and `CRW_BASE_URL` points to the correct port (3002). |

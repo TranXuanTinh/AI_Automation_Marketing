@@ -10,7 +10,8 @@
     "listen": "node src/cli/run-listeners.js",
     "research": "node src/cli/run-research.js",
     "seed": "node src/cli/seed-data.js",
-    "crawl": "node src/cli/run-crawl.js"
+    "crawl": "node src/cli/run-crawl.js",
+    "crw": "crw serve --port 3002"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

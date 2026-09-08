@@ -11,9 +11,9 @@ import { mapEvidence } from '../research/evidence-mapper.js';
 import { draftContent } from '../research/content-drafter.js';
 
 async function main() {
-  const apiKey = process.env.XFTOKEN_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY || process.env.CHATGPT_API_KEY || process.env.GEMINI_API_KEY || process.env.XFTOKEN_API_KEY;
   if (!apiKey) {
-    console.error('❌ Error: XFTOKEN_API_KEY or GEMINI_API_KEY environment variable is required.');
+    console.error('❌ Error: OPENAI_API_KEY, GEMINI_API_KEY, or XFTOKEN_API_KEY environment variable is required.');
     process.exit(1);
   }
 

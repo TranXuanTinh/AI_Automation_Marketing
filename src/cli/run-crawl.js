@@ -20,9 +20,9 @@ import { scanReddit } from '../listeners/reddit-scanner.js';
 import { scanYouTube } from '../listeners/youtube-scanner.js';
 
 async function main() {
-  const geminiApiKey = process.env.XFTOKEN_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY;
+  const geminiApiKey = process.env.OPENAI_API_KEY || process.env.CHATGPT_API_KEY || process.env.GEMINI_API_KEY || process.env.XFTOKEN_API_KEY;
   if (!geminiApiKey) {
-    console.error('❌ Error: XFTOKEN_API_KEY or GEMINI_API_KEY environment variable is required.');
+    console.error('❌ Error: OPENAI_API_KEY, GEMINI_API_KEY, or XFTOKEN_API_KEY environment variable is required.');
     process.exit(1);
   }
 
@@ -49,7 +49,7 @@ async function main() {
   if (!available) {
     const config = crw.getConfig();
     console.error(`\n❌ CRW server is not reachable at ${config.baseUrl}`);
-    console.error('   Make sure CRW is running: crw');
+    console.error('   Make sure CRW is running: npm run crw (or crw serve --port 3002)');
     console.error('   Or check your CRW_BASE_URL in .env');
     process.exit(1);
   }

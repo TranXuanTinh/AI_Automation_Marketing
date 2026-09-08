@@ -35,15 +35,15 @@ Install the CRW binary directly:
 curl -fsSL https://fastcrw.com/install | sh
 ```
 
-Start the CRW server:
+Start the CRW server (sử dụng port 3002 để tránh trùng với server dashboard port 3000):
 ```bash
-crw
-# Server starts on http://localhost:3000
+npm run crw
+# Hoặc: crw serve --port 3002
 ```
 
 Configure in `.env`:
 ```env
-CRW_BASE_URL=http://localhost:3000
+CRW_BASE_URL=http://localhost:3002
 ```
 
 ### Option B: Cloud API
@@ -81,8 +81,8 @@ Every CRW-enhanced component has a graceful fallback:
 
 ```mermaid
 flowchart LR
-    A[CRW Available?] -- Yes --> B[Use CRW<br/>Real Web Scraping]
-    A -- No --> C[Fallback<br/>Gemini / API]
+    A["CRW Available?"] -- Yes --> B[Use CRW<br/>Real Web Scraping]
+    A -- No --> C[Fallback<br/>AI / API]
     B --> D[Enhanced Results<br/>Real Data]
     C --> E[Standard Results<br/>AI-Simulated Data]
 ```
@@ -232,8 +232,8 @@ npm run crawl -- academic "EMDR treatment PTSD meta-analysis"
 
 | Issue | Cause | Resolution |
 |---|---|---|
-| `CRW server is not reachable` | CRW binary not running | Start with `crw` command |
-| `CRW not configured` | Missing env vars | Add `CRW_BASE_URL=http://localhost:3000` to `.env` |
-| `CRW search failed` | Network/API issue | Check CRW logs; verify with `curl http://localhost:3000/health` |
+| `CRW server is not reachable` | CRW binary not running | Chạy `npm run crw` hoặc `crw serve --port 3002` |
+| `CRW not configured` | Missing env vars | Thêm `CRW_BASE_URL=http://localhost:3002` vào `.env` |
+| `CRW search failed` | Network/API issue | Check CRW logs; verify with `curl http://localhost:3002/health` |
 | `DOI verification failed` | DOI.org rate limiting | Wait and retry; CRW handles most rate limits automatically |
-| System still uses Gemini | CRW health check fails | Verify CRW is running: `curl http://localhost:3000/health` |
+| System still uses Gemini | CRW health check fails | Verify CRW is running: `curl http://localhost:3002/health` |

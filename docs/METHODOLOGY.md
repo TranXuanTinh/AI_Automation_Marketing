@@ -51,7 +51,7 @@ flowchart TD
     D --> G{"Valid & Accessible?"}
     E --> G
     F --> G
-    G -- Yes --> H["Write to `sources` & `evidence_maps` DB"]
+    G -- Yes --> H["Write to sources & evidence_maps DB"]
     G -- No --> I["Discard Citation & Flag Alert"]
 ```
 

@@ -65,9 +65,10 @@ app.post('/api/drafts/:id/review', async (req, res) => {
   updateDraftStatus(id, status, notes);
 
   // If approved, automatically trigger brief generation
-  if (status === 'approved' && process.env.GEMINI_API_KEY) {
+  const aiApiKey = process.env.OPENAI_API_KEY || process.env.CHATGPT_API_KEY || process.env.GEMINI_API_KEY || process.env.XFTOKEN_API_KEY;
+  if (status === 'approved' && aiApiKey) {
     try {
-      await generateSocialBriefs(process.env.GEMINI_API_KEY, id);
+      await generateSocialBriefs(aiApiKey, id);
     } catch (err) {
       console.error('Failed to generate briefs automatically:', err.message);
     }
