@@ -14,7 +14,9 @@ import {
   getScoredTopics,
   getSources,
   getDrafts,
+  getDraftById,
   updateDraftStatus,
+  updateDraftContent,
   getBriefs,
   getPerformanceReport,
   insertDraft
@@ -55,6 +57,26 @@ app.get('/api/sources', (req, res) => {
 app.get('/api/drafts', (req, res) => {
   const status = req.query.status;
   res.json(getDrafts(status));
+});
+
+// Single draft with verified evidence sources
+app.get('/api/drafts/:id', (req, res) => {
+  const draft = getDraftById(req.params.id);
+  if (!draft) return res.status(404).json({ error: 'Draft not found' });
+  res.json(draft);
+});
+
+// Rich-text editor update endpoint: saves clinical edits and FAQ modifications
+app.put('/api/drafts/:id', (req, res) => {
+  const { id } = req.params;
+  const { title, body, faq, meta_description } = req.body;
+  try {
+    updateDraftContent(id, { title, body, faq, meta_description });
+    const updated = getDraftById(id);
+    res.json({ success: true, message: `Draft ${id} clinical edits saved`, draft: updated });
+  } catch (err) {
+    res.status(500).json({ error: `Failed to update draft: ${err.message}` });
+  }
 });
 
 // Yiya Human Approval Gate

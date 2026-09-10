@@ -96,6 +96,7 @@ db.exec(`
     headings TEXT,                 -- JSON array
     internal_links TEXT,           -- JSON array
     bibliography TEXT,             -- JSON array
+    faq TEXT,                      -- JSON array of { question, answer }
     status TEXT DEFAULT 'draft',   -- 'draft', 'review', 'approved', 'published', 'rejected'
     yiya_notes TEXT,
     created_at TEXT DEFAULT (datetime('now')),
@@ -150,6 +151,13 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 `);
+
+// Migration: ensure faq column exists on content_drafts if table was already created
+try {
+  db.exec('ALTER TABLE content_drafts ADD COLUMN faq TEXT');
+} catch (e) {
+  // Column already exists
+}
 
 // ── Helper functions ────────────────────────────────────────────────
 
@@ -228,17 +236,110 @@ export function getSources() {
 
 export function insertDraft(draft) {
   const stmt = db.prepare(`
-    INSERT INTO content_drafts (scored_topic_id, draft_type, title, body, meta_description, headings, internal_links, bibliography, status)
-    VALUES (@scored_topic_id, @draft_type, @title, @body, @meta_description, @headings, @internal_links, @bibliography, @status)
+    INSERT INTO content_drafts (scored_topic_id, draft_type, title, body, meta_description, headings, internal_links, bibliography, faq, status)
+    VALUES (@scored_topic_id, @draft_type, @title, @body, @meta_description, @headings, @internal_links, @bibliography, @faq, @status)
   `);
-  return stmt.run(draft);
+  return stmt.run({
+    ...draft,
+    faq: draft.faq ? (typeof draft.faq === 'string' ? draft.faq : JSON.stringify(draft.faq)) : '[]',
+  });
+}
+
+function attachDraftMetadata(draft) {
+  if (!draft) return null;
+
+  // Fetch linked evidence sources from evidence_maps + sources
+  const linkedSources = draft.scored_topic_id ? db.prepare(`
+    SELECT s.*, em.relevance_note
+    FROM sources s
+    JOIN evidence_maps em ON s.id = em.source_id
+    WHERE em.scored_topic_id = ?
+    ORDER BY s.verified DESC, s.year DESC
+  `).all(draft.scored_topic_id) : [];
+
+  let parsedFaq = [];
+  try {
+    parsedFaq = draft.faq ? JSON.parse(draft.faq) : [];
+  } catch {}
+
+  let parsedBib = [];
+  try {
+    parsedBib = draft.bibliography ? JSON.parse(draft.bibliography) : [];
+  } catch {}
+
+  let parsedHeadings = [];
+  try {
+    parsedHeadings = draft.headings ? JSON.parse(draft.headings) : [];
+  } catch {}
+
+  let parsedLinks = [];
+  try {
+    parsedLinks = draft.internal_links ? JSON.parse(draft.internal_links) : [];
+  } catch {}
+
+  return {
+    ...draft,
+    sources: linkedSources,
+    faq: parsedFaq,
+    bibliography: parsedBib,
+    headings: parsedHeadings,
+    internal_links: parsedLinks,
+  };
 }
 
 export function getDrafts(status) {
+  let drafts;
   if (status) {
-    return db.prepare('SELECT * FROM content_drafts WHERE status = ? ORDER BY created_at DESC').all(status);
+    drafts = db.prepare(`
+      SELECT cd.*, st.candidate_id, tc.title as topic_title, tc.cluster, tc.underlying_problem
+      FROM content_drafts cd
+      LEFT JOIN scored_topics st ON cd.scored_topic_id = st.id
+      LEFT JOIN topic_candidates tc ON st.candidate_id = tc.id
+      WHERE cd.status = ?
+      ORDER BY cd.created_at DESC
+    `).all(status);
+  } else {
+    drafts = db.prepare(`
+      SELECT cd.*, st.candidate_id, tc.title as topic_title, tc.cluster, tc.underlying_problem
+      FROM content_drafts cd
+      LEFT JOIN scored_topics st ON cd.scored_topic_id = st.id
+      LEFT JOIN topic_candidates tc ON st.candidate_id = tc.id
+      ORDER BY cd.created_at DESC
+    `).all();
   }
-  return db.prepare('SELECT * FROM content_drafts ORDER BY created_at DESC').all();
+
+  return drafts.map(d => attachDraftMetadata(d));
+}
+
+export function getDraftById(id) {
+  const draft = db.prepare(`
+    SELECT cd.*, st.candidate_id, tc.title as topic_title, tc.cluster, tc.underlying_problem
+    FROM content_drafts cd
+    LEFT JOIN scored_topics st ON cd.scored_topic_id = st.id
+    LEFT JOIN topic_candidates tc ON st.candidate_id = tc.id
+    WHERE cd.id = ?
+  `).get(id);
+
+  if (!draft) return null;
+  return attachDraftMetadata(draft);
+}
+
+export function updateDraftContent(id, { title, body, faq, meta_description }) {
+  const stmt = db.prepare(`
+    UPDATE content_drafts
+    SET title = COALESCE(@title, title),
+        body = COALESCE(@body, body),
+        faq = COALESCE(@faq, faq),
+        meta_description = COALESCE(@meta_description, meta_description)
+    WHERE id = @id
+  `);
+  return stmt.run({
+    id,
+    title: title ?? null,
+    body: body ?? null,
+    faq: faq !== undefined ? (typeof faq === 'string' ? faq : JSON.stringify(faq)) : null,
+    meta_description: meta_description ?? null,
+  });
 }
 
 export function updateDraftStatus(id, status, notes) {

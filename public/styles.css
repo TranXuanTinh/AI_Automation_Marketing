@@ -454,3 +454,398 @@ body {
   outline: none;
   border-color: var(--accent-gold);
 }
+
+/* ── Rich Clinical Editor & Human Approval Gate Styles ──────────────── */
+
+.draft-card {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 28px;
+  background-color: var(--bg-card);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.2s ease;
+}
+
+.draft-card:hover {
+  border-color: rgba(196, 163, 90, 0.4);
+}
+
+.draft-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.draft-title-input {
+  width: 100%;
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  color: var(--accent-gold-light);
+  background-color: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.draft-meta-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.meta-desc-input {
+  width: 100%;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  background-color: rgba(0, 0, 0, 0.25);
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 16px;
+}
+
+/* Draft Sub-Navigation Tabs */
+.draft-tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  gap: 4px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.draft-tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 8px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.draft-tab-btn:hover {
+  color: var(--text-main);
+}
+
+.draft-tab-btn.active {
+  color: var(--accent-gold-light);
+  border-bottom-color: var(--accent-gold);
+  background-color: rgba(196, 163, 90, 0.06);
+  border-radius: 6px 6px 0 0;
+}
+
+/* Editor Toolbar */
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  background-color: #0c1311;
+  border: 1px solid var(--border-color);
+  border-radius: 8px 8px 0 0;
+  padding: 8px 12px;
+  border-bottom: none;
+}
+
+.toolbar-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-btn:hover {
+  background-color: var(--accent-gold);
+  color: #000;
+  border-color: var(--accent-gold);
+}
+
+.toolbar-btn.btn-nuance {
+  background-color: rgba(196, 163, 90, 0.15);
+  color: var(--accent-gold-light);
+  border-color: var(--accent-gold);
+  margin-left: auto;
+}
+
+.toolbar-btn.btn-nuance:hover {
+  background-color: var(--accent-gold);
+  color: #000;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-color);
+  margin: 0 4px;
+}
+
+/* Editor Textarea */
+.editor-textarea {
+  width: 100%;
+  min-height: 380px;
+  background-color: #0c1311;
+  border: 1px solid var(--border-color);
+  border-radius: 0 0 8px 8px;
+  padding: 16px;
+  color: var(--text-main);
+  font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+.editor-textarea:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
+/* Formatted Live Article Preview */
+.article-preview-pane {
+  background-color: #0a0f0d;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 24px 30px;
+  min-height: 380px;
+  max-height: 580px;
+  overflow-y: auto;
+  line-height: 1.75;
+  color: #e3ded6;
+}
+
+.article-preview-pane h2 {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  color: var(--accent-gold-light);
+  margin-top: 24px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(196, 163, 90, 0.2);
+  padding-bottom: 6px;
+}
+
+.article-preview-pane h3 {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  color: #d6cbaf;
+  margin-top: 18px;
+  margin-bottom: 8px;
+}
+
+.article-preview-pane p {
+  margin-bottom: 14px;
+  font-size: 0.95rem;
+}
+
+.article-preview-pane ul, .article-preview-pane ol {
+  margin-left: 24px;
+  margin-bottom: 16px;
+}
+
+.article-preview-pane li {
+  margin-bottom: 6px;
+}
+
+.article-preview-pane blockquote {
+  border-left: 3px solid var(--accent-gold);
+  background-color: rgba(196, 163, 90, 0.08);
+  padding: 12px 18px;
+  border-radius: 0 8px 8px 0;
+  margin: 16px 0;
+  font-style: italic;
+  color: #eeddb2;
+}
+
+/* Citation Chip */
+.cite-tag {
+  display: inline-block;
+  background-color: rgba(196, 163, 90, 0.18);
+  border: 1px solid rgba(196, 163, 90, 0.4);
+  color: var(--accent-gold-light);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin: 0 2px;
+  vertical-align: super;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cite-tag:hover {
+  background-color: var(--accent-gold);
+  color: #000;
+}
+
+/* 3 Contextual FAQs Review Section */
+.faq-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.faq-card-editable {
+  background-color: #0b1210;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.faq-card-editable:hover {
+  border-color: var(--accent-gold);
+}
+
+.faq-num-pill {
+  display: inline-block;
+  background-color: var(--accent-green);
+  color: var(--accent-gold-light);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.faq-q-input {
+  width: 100%;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--accent-gold-light);
+  background-color: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.faq-a-textarea {
+  width: 100%;
+  min-height: 85px;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px 12px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+/* Verified Sources (Claim -> Source) Panel */
+.evidence-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.evidence-source-card {
+  background-color: #0b1210;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.evidence-source-card:hover {
+  border-color: var(--accent-gold);
+  background-color: #0e1714;
+}
+
+.evidence-num {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+  background-color: rgba(196, 163, 90, 0.1);
+  border-radius: 6px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.evidence-content h5 {
+  font-size: 0.92rem;
+  color: var(--text-main);
+  margin-bottom: 4px;
+  font-family: var(--font-sans);
+}
+
+.evidence-content .evidence-authors {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.evidence-content .evidence-takeaway {
+  font-size: 0.82rem;
+  color: #b7c7c2;
+  font-style: italic;
+}
+
+.evidence-insert-btn {
+  background: rgba(196, 163, 90, 0.1);
+  border: 1px solid rgba(196, 163, 90, 0.3);
+  color: var(--accent-gold-light);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.evidence-insert-btn:hover {
+  background-color: var(--accent-gold);
+  color: #000;
+}
+
+/* Save / Status Toast */
+.toast-msg {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background-color: var(--accent-green);
+  border: 1px solid var(--accent-gold);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+  font-weight: 500;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

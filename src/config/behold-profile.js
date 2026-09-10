@@ -105,8 +105,9 @@ export const TONE_GUIDELINES = {
     'Name the experience before explaining it',
     'Honour the reader\'s intelligence — no oversimplification',
     'Avoid medical jargon unless defined; use the audience\'s own language',
-    'Never pathologise adaptive survival strategies — frame them as protection',
-    'Include the body — emotional experiences live in the nervous system, not just the mind',
+    'Responsible clinical formulation: Never present trauma as the sole, absolute explanation for emotional symptoms. Use nuanced framing: "X can be experienced as a protective response, particularly in the context of overwhelming stress or trauma", while noting overlap with depression, grief, burnout, and nervous system hypoarousal.',
+    'Evidence Grounding: Every significant clinical claim or framework must cite an evidence source with numbered inline citations [1], [2] linked to the research base.',
+    'Include the body — emotional experiences live in the nervous system, not just the mind (somatic regulation, polyvagal, window of tolerance)',
     'Hold spiritual questions with openness, never impose or dismiss',
     'Always offer hope without toxic positivity — "it can shift" not "just think positive"',
     'Use Canadian English spelling (colour, honour, practise)',
@@ -114,8 +115,9 @@ export const TONE_GUIDELINES = {
   avoid: [
     'Generic self-help language ("just breathe", "practice gratitude")',
     'Clickbait or SEO-stuffed phrasing',
+    'Overstated monocausal claims (e.g. claiming numbness "is" definitively a trauma survival response rather than "can be experienced as an adaptation")',
     'Medical diagnosis language (leave that to the clinical context)',
-    'Definitive claims without evidence',
+    'Definitive claims without evidence or ungrounded generalizations',
     'AI-sounding phrases ("In today\'s fast-paced world", "Let\'s dive in")',
   ],
 };
