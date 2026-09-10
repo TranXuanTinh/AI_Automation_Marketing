@@ -12,7 +12,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { createAIClient } from '../config/ai-client.js';
+import { createAIClient, safeJsonParse } from '../config/ai-client.js';
 import { TOPIC_CLUSTERS, getSystemPrompt } from '../config/behold-profile.js';
 import { insertSignal } from '../database/db.js';
 import { createCRWClientFromEnv } from '../crawlers/crw-client.js';
@@ -112,7 +112,7 @@ Format as JSON array of objects: { "title": "...", "body": "...", "engagement": 
       },
     });
 
-    return JSON.parse(response.text);
+    return safeJsonParse(response.text);
   } catch {
     return null;
   }
@@ -141,7 +141,8 @@ Format as JSON array with objects matching: { "title": "...", "body": "...", "en
       },
     });
 
-    return JSON.parse(response.text);
+    const parsed = safeJsonParse(response.text);
+    return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
     console.warn(`  ⚠ AI fallback for ${subreddit} failed: ${err.message}`);
     return [];

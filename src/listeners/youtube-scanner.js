@@ -9,7 +9,7 @@
  * FALLBACK: Uses Gemini-assisted analysis when neither CRW nor YouTube API is available.
  */
 
-import { createAIClient } from '../config/ai-client.js';
+import { createAIClient, safeJsonParse } from '../config/ai-client.js';
 import { TOPIC_CLUSTERS, getSystemPrompt } from '../config/behold-profile.js';
 import { insertSignal } from '../database/db.js';
 import { createCRWClientFromEnv } from '../crawlers/crw-client.js';
@@ -91,11 +91,8 @@ Format as JSON array. Only include real videos found in the content above.`,
     },
   });
 
-  try {
-    return JSON.parse(response.text);
-  } catch {
-    return [];
-  }
+  const parsed = safeJsonParse(response.text);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 /**
@@ -182,7 +179,7 @@ Format as JSON array. Only include videos you have high confidence actually exis
       },
     });
 
-    const parsed = JSON.parse(response.text);
+    const parsed = safeJsonParse(response.text);
     return Array.isArray(parsed) && parsed.length > 0 ? parsed : getFallbackVideosForCluster(cluster);
   } catch (err) {
     console.warn(`  ⚠️ AI YouTube fallback for "${cluster.name}": ${err.message}. Using curated templates.`);

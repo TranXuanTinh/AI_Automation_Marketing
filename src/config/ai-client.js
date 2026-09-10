@@ -131,10 +131,14 @@ export function createAIClient(explicitApiKey = null) {
             model: targetModel,
             messages,
             temperature: 0.2,
+            max_tokens: 4096,
           };
 
           if (responseMimeType === 'application/json') {
-            requestBody.response_format = { type: 'json_object' };
+            // Only set response_format for official OpenAI endpoints; custom endpoints / NVIDIA NIM frequently return 500 on json_object
+            if (config.isOpenAI) {
+              requestBody.response_format = { type: 'json_object' };
+            }
           }
 
           let lastError = null;
@@ -159,10 +163,11 @@ export function createAIClient(explicitApiKey = null) {
               const errText = await response.text().catch(() => '');
               lastError = new Error(`AI API request to ${endpoint} failed (${response.status}): ${errText}`);
 
-              // If rate limited or server error (500, 502, 503), retry after backoff
-              if ([429, 500, 502, 503, 504].includes(response.status) && attempt < 4) {
+              // If rate limited or server error (500, 502, 503) or schema error (400), retry after backoff
+              if ([400, 429, 500, 502, 503, 504].includes(response.status) && attempt < 4) {
+                delete requestBody.response_format; // Drop response_format on retry to prevent schema rejection
                 const backoffMs = attempt * 3000;
-                console.warn(`  ⚠️ AI API returned ${response.status}. Retrying in ${backoffMs / 1000}s (attempt ${attempt}/4)...`);
+                console.warn(`  ⚠️ AI API returned ${response.status} (${errText.slice(0, 150)}). Retrying in ${backoffMs / 1000}s (attempt ${attempt}/4)...`);
                 await new Promise(r => setTimeout(r, backoffMs));
                 continue;
               }
@@ -170,6 +175,7 @@ export function createAIClient(explicitApiKey = null) {
               throw lastError;
             } catch (err) {
               lastError = err;
+              delete requestBody.response_format;
               if (attempt < 4 && !err.message.includes('410')) {
                 const backoffMs = attempt * 3000;
                 console.warn(`  ⚠️ AI API network error: ${err.message}. Retrying in ${backoffMs / 1000}s (attempt ${attempt}/4)...`);
@@ -245,10 +251,10 @@ export function safeJsonParse(rawText) {
   if (!rawText || typeof rawText !== 'string') return null;
   let text = rawText.trim();
 
-  // Strip markdown code fences if present
-  const jsonBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (jsonBlockMatch) {
-    text = jsonBlockMatch[1].trim();
+  // Strip markdown code fences if present (```json, ```python, ```javascript, etc.)
+  const codeBlockMatch = text.match(/```(?:json|python|javascript|js)?\s*([\s\S]*?)\s*```/i);
+  if (codeBlockMatch) {
+    text = codeBlockMatch[1].trim();
   }
 
   // Extract from outer brackets/braces if model included conversational wrapper
@@ -270,26 +276,52 @@ export function safeJsonParse(rawText) {
     }
   }
 
-  // Attempt 1: Direct JSON.parse
-  try {
-    return JSON.parse(text);
-  } catch {
-    // Attempt 2: Sanitize unescaped newlines/tabs inside quotes
+  // Helper parser with multiple sanitization layers
+  const parseWithSanitize = (str) => {
     try {
-      const sanitized = text.replace(/"((?:\\.|[^"\\])*)"/gs, (m, p) => {
-        return '"' + p.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t') + '"';
-      });
-      return JSON.parse(sanitized);
+      return JSON.parse(str);
     } catch {
-      // Attempt 3: Strip control characters
       try {
-        const cleanCtrl = text.replace(/[\x00-\x1F\x7F-\x9F]/g, ch => (ch === '\n' || ch === '\r' || ch === '\t') ? ' ' : '');
-        return JSON.parse(cleanCtrl);
+        const sanitized = str.replace(/"((?:\\.|[^"\\])*)"/gs, (m, p) => {
+          return '"' + p.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t') + '"';
+        });
+        return JSON.parse(sanitized);
       } catch {
-        return null;
+        try {
+          const cleanCtrl = str.replace(/[\x00-\x1F\x7F-\x9F]/g, ch => (ch === '\n' || ch === '\r' || ch === '\t') ? ' ' : '');
+          return JSON.parse(cleanCtrl);
+        } catch {
+          return null;
+        }
       }
     }
+  };
+
+  const initialParse = parseWithSanitize(text);
+  if (initialParse !== null) return initialParse;
+
+  // Repair 1: Truncated JSON array (starts with [ but cut off before closing ])
+  if (firstBracket !== -1) {
+    const lastValidBrace = text.lastIndexOf('}');
+    if (lastValidBrace > firstBracket) {
+      const repairedArray = text.substring(firstBracket, lastValidBrace + 1) + ']';
+      const arrayParse = parseWithSanitize(repairedArray);
+      if (arrayParse !== null) return arrayParse;
+    }
   }
+
+  // Repair 2: Multiple top-level JSON objects without outer [ ... ]
+  const objMatches = text.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g) || [];
+  if (objMatches.length > 0) {
+    const items = [];
+    for (const block of objMatches) {
+      const parsed = parseWithSanitize(block);
+      if (parsed !== null) items.push(parsed);
+    }
+    if (items.length > 0) return items;
+  }
+
+  return null;
 }
 
 export default { createAIClient, getAIConfig, safeJsonParse };

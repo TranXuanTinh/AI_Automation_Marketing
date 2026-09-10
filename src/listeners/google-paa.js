@@ -8,7 +8,7 @@
  * FALLBACK: Uses Gemini API to simulate PAA patterns when CRW is unavailable.
  */
 
-import { createAIClient } from '../config/ai-client.js';
+import { createAIClient, safeJsonParse } from '../config/ai-client.js';
 import { TOPIC_CLUSTERS, getSystemPrompt } from '../config/behold-profile.js';
 import { insertSignal } from '../database/db.js';
 import { createCRWClientFromEnv } from '../crawlers/crw-client.js';
@@ -122,10 +122,8 @@ IMPORTANT: Only extract questions that are actually present or strongly implied 
       },
     });
 
-    let questions;
-    try {
-      questions = JSON.parse(response.text);
-    } catch {
+    const questions = safeJsonParse(response.text);
+    if (!questions || !Array.isArray(questions)) {
       console.warn(`  ⚠ Failed to parse CRW+AI PAA response for ${cluster.name}, skipping.`);
       continue;
     }
@@ -184,7 +182,11 @@ IMPORTANT: Only include questions you have high confidence actually appear in Go
       },
     });
 
-    return JSON.parse(response.text);
+    const parsed = safeJsonParse(response.text);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    throw new Error('Could not parse valid JSON array from AI response');
   } catch (err) {
     console.warn(`  ⚠️ AI PAA generation unavailable for "${cluster.name}" (${err.message}) — using symptom-based fallback questions`);
     return symptoms.map(s => ({

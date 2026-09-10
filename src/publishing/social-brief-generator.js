@@ -5,7 +5,7 @@
  * repurposing across Yiya and Behold ecosystems (Pinterest, IG, YouTube, LinkedIn, Substack).
  */
 
-import { createAIClient } from '../config/ai-client.js';
+import { createAIClient, safeJsonParse } from '../config/ai-client.js';
 import { getSystemPrompt } from '../config/behold-profile.js';
 import { insertBrief, db } from '../database/db.js';
 
@@ -47,11 +47,9 @@ Format as JSON array:
     },
   });
 
-  let briefs;
-  try {
-    briefs = JSON.parse(response.text);
-  } catch (err) {
-    console.error('  ✗ Failed to parse briefs:', err.message);
+  const briefs = safeJsonParse(response.text);
+  if (!briefs || !Array.isArray(briefs)) {
+    console.error('  ✗ Failed to parse briefs from AI response');
     return [];
   }
 

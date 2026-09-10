@@ -6,7 +6,7 @@
  * a deduplicated list of topic candidates.
  */
 
-import { createAIClient } from '../config/ai-client.js';
+import { createAIClient, safeJsonParse } from '../config/ai-client.js';
 import { getSystemPrompt, TOPIC_CLUSTERS, TARGET_AUDIENCE } from '../config/behold-profile.js';
 import { getGlossaryPrompt } from '../config/glossary.js';
 import { getUnprocessedSignals, markSignalsProcessed, insertCandidate } from '../database/db.js';
@@ -96,15 +96,13 @@ Provide output as a JSON array of objects:
         },
       });
 
-      let candidates = [];
-      try {
-        candidates = JSON.parse(response.text);
-        if (!Array.isArray(candidates)) {
-          candidates = [candidates];
-        }
-      } catch {
+      let candidates = safeJsonParse(response.text);
+      if (!candidates) {
         console.warn(`  ⚠ Could not parse JSON for cluster ${clusterName}, skipping cluster.`);
         continue;
+      }
+      if (!Array.isArray(candidates)) {
+        candidates = [candidates];
       }
 
       for (const c of candidates) {

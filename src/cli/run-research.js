@@ -31,7 +31,12 @@ async function main() {
   if (topTopics.length > 0) {
     const top = topTopics[0];
     console.log(`\n[3/4] Building verified evidence map for #1 topic: "${top.title}"...`);
-    await mapEvidence(apiKey, top.id, top.title, top.underlying_problem);
+    const mappedSources = await mapEvidence(apiKey, top.id, top.title, top.underlying_problem);
+    if (!mappedSources || mappedSources.length === 0) {
+      console.warn(`  ⚠️ Warning: No evidence sources were linked for topic #${top.id}. Proceeding with core clinical foundation.`);
+    } else {
+      console.log(`  ✓ Successfully mapped and verified ${mappedSources.length} sources for topic #${top.id}.`);
+    }
 
     console.log(`\n[4/4] Generating clinical psychoeducation draft & FAQ...`);
     await draftContent(apiKey, top.id);

@@ -5,7 +5,7 @@
  * Uses Gemini for assessment with structured output.
  */
 
-import { createAIClient } from '../config/ai-client.js';
+import { createAIClient, safeJsonParse } from '../config/ai-client.js';
 import {
   getSystemPrompt,
   SCORING_MATRIX,
@@ -95,10 +95,8 @@ Be honest and critical. Not every topic deserves a 5. Use the full range.`,
       },
     });
 
-    let scores;
-    try {
-      scores = JSON.parse(response.text);
-    } catch {
+    const scores = safeJsonParse(response.text);
+    if (!scores) {
       console.warn(`  ⚠ Failed to parse scores for "${candidate.title}", skipping.`);
       continue;
     }
